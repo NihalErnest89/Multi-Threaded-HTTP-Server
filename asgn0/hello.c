@@ -1,6 +1,6 @@
-#include <unistd.h>
+#include <stdio.h>
 
 int main() {
-    write(STDOUT_FILENO, "Hello World!\n", sizeof("Hello World!\n") - 1);
+    printf("Hello World!\n");
     return 0;
 }
