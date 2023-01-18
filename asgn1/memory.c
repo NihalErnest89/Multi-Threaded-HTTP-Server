@@ -5,7 +5,7 @@ int main(int argc, char **argv) {
     // There should only be 2 command-line arguments.
     if (argc != 3) {
         fprintf(stderr, "Invalid Command\n");
-        return 0
+        return 0;
     }
 
     // Opening the file
