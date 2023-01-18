@@ -1,21 +1,25 @@
+// Coded by Nihal Ernest
+// CSE 130, Winter 2023
+// Assignment 1
+
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
 
 int main() {
-    // There should only be 1 command-line arguments.
-
-    char input[PATH_MAX + 3];
+    // Input takes in the mode (get/set) and file name
+    char input[PATH_MAX + 4]; // PATH_MAX defined as the file name size limit
     scanf("%[^\n]", input);
+
+    // Split the input string into mode and file name
     char *mode = strtok(input, " ");
     char *file_name = strtok(NULL, " ");
 
     // Opening the file
-
     FILE *get = fopen(file_name, "r");
     if (get == NULL) {
         printf("File does not exist\n");
-        return 0;
+        return 1;
     }
 
     // If the entered command was set
@@ -37,6 +41,9 @@ int main() {
         while (fscanf(get, "%[^\n] ", buffer) != EOF) {
             printf("%s\n", buffer);
         }
+    } else {
+        fprintf(stderr, "Invalid Command\n");
+        return 1;
     }
 
     // No memory leaks?
