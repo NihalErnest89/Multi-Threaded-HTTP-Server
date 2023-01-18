@@ -1,31 +1,34 @@
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
-int main(int argc, char **argv) {
-    // There should only be 2 command-line arguments.
-    if (argc != 3) {
-        fprintf(stderr, "Invalid Command\n");
-        return 0;
-    }
+int main() {
+    // There should only be 1 command-line arguments.
+
+    char input[PATH_MAX + 3];
+    scanf("%[^\n]", input);
+    char *mode = strtok(input, " ");
+    char *file_name = strtok(NULL, " ");
 
     // Opening the file
-    FILE *get = fopen(argv[2], "r");
+
+    FILE *get = fopen(file_name, "r");
     if (get == NULL) {
         printf("File does not exist\n");
         return 0;
     }
 
     // If the entered command was set
-    if (strcmp(argv[1], "set") == 0) {
+    if (strcmp(mode, "set") == 0) {
         char text[1024];
         scanf("%[^\n]", text);
 
-        printf("File name: %s\n", argv[2]);
+        printf("File name: %s\n", file_name);
         printf("Text: %s\n", text);
     }
 
     // If the entered command was get
-    else if (strcmp(argv[1], "get") == 0) {
+    else if (strcmp(mode, "get") == 0) {
         // The buffer stores each line of the file temporarily.
         char buffer[1024];
 
