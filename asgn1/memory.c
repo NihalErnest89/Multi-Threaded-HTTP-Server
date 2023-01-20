@@ -30,17 +30,18 @@ int main() {
 
     //    scanf("%s %s", mode, file_name);
 
-    if (strlen(file_name) <= 2) {
-        fprintf(stderr, "Invalid Command\n");
-        return 1;
-    }
-
     // If the entered command was set
     if (strcmp(mode, "set") == 0) {
         char text[BUFFER];
 
         int set = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
         int bytes_read = 0;
+
+	if (set < 0) {
+            fprintf(stderr, "Invalid Command\n");
+            return 1;
+        }
+
 
         do {
             bytes_read = read(STDIN_FILENO, text, BUFFER);
