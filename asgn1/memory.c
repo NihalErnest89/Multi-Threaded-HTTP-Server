@@ -20,7 +20,7 @@ int main() {
     // Opening the file
     int get = open(file_name, O_RDONLY);
     if (get < 0) {
-        printf("Invalid Filename\n");
+        fprintf(stderr, "Invalid Filename\n");
         return 1;
     }
 
@@ -38,9 +38,8 @@ int main() {
         // The buffer stores each line of the file temporarily.
         char buffer[BUFFER];
         int bytes_read = 0;
-
         do {
-            bytes_read = read(get, buffer + bytes_read, BUFFER); //Tested adding buffer and bytes_read
+            bytes_read = read(get, buffer, BUFFER); //Tested adding buffer and bytes_read
             if (bytes_read < 0) {
                 fprintf(stderr, "Failed to read: %d\n", errno);
                 return 1;
@@ -60,7 +59,7 @@ int main() {
                 } while (bytes_written < bytes_read);
             }
         } while (bytes_read > 0);
-
+	close(get);
         // Reads each line of the file and stores it in buffer.
         // Buffer is then printed
     } else {
