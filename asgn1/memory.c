@@ -22,55 +22,47 @@ int main() {
     char *first = NULL;
     // read it all into buffer
     // process the buffer character by character
-    	br = read(STDIN_FILENO, temp, BUFFER);
-	
-	if (strlen(temp) <= 4 || temp[4] == ' ') {
-	    fprintf(stderr, "Invalid Command\n");
-	    return 1;
-	}
-	
-	
-        char *dupe = strdup(temp);
-	first = strchr(dupe, '\n');
-//	printf("Test %s!%lu.\n", first, strlen(first));
-	// Check for newline
-	if (strchr(temp, '\n') == NULL) {
-//	    printf("%s!", temp);
-//	    printf("apparently there is no newline\n");
-	    fprintf(stderr, "Invalid Command\n");
-	    return 1;
-	}
-	
-        char *mode = strtok(temp, " ");
+    br = read(STDIN_FILENO, temp, BUFFER);
 
+    if (strlen(temp) <= 4 || temp[4] == ' ') {
+        fprintf(stderr, "Invalid Command\n");
+        return 1;
+    }
 
-        char *file_name = strtok(NULL, "\n");	
+    char *dupe = strdup(temp);
+    first = strchr(dupe, '\n');
+    //	printf("Test %s!%lu.\n", first, strlen(first));
+    // Check for newline
+    if (strchr(temp, '\n') == NULL) {
+        //	    printf("%s!", temp);
+        //	    printf("apparently there is no newline\n");
+        fprintf(stderr, "Invalid Command\n");
+        return 1;
+    }
 
+    char *mode = strtok(temp, " ");
 
-	if (br < 0) {
-            fprintf(stderr, "Invalid Command\n");
-            return 1;
-        }
+    char *file_name = strtok(NULL, "\n");
 
+    if (br < 0) {
+        fprintf(stderr, "Invalid Command\n");
+        return 1;
+    }
 
+    //	printf("test with:%s!\n", mode);
 
-//	printf("test with:%s!\n", mode);
-
-
-//    scanf("%[^\n]", temp);
-
-
+    //    scanf("%[^\n]", temp);
 
     // If the entered command was set
     if (strcmp(mode, "set") == 0) {
         char text[BUFFER];
-	int set = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+        int set = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
-//	printf("temp:%s\n", first);
-	if (strcmp(first, "\n") != 0) {
+        //	printf("temp:%s\n", first);
+        if (strcmp(first, "\n") != 0) {
             char *firstLine = strtok(NULL, "\0");
-	    write(set, firstLine, strlen(firstLine));
-	}
+            write(set, firstLine, strlen(firstLine));
+        }
 
         int bytes_read = 0;
 
