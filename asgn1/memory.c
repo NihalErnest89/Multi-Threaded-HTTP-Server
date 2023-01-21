@@ -18,17 +18,46 @@ int main() {
     //    char file_name[PATH_MAX];
 
     char temp[PATH_MAX + 4];
-    scanf("%[^\n]", temp);
+    int br = 0;
 
-    if (strlen(temp) <= 4 || temp[4] == ' ') {
-        fprintf(stderr, "Invalid Command\n");
-        return 1;
-    }
+    // read it all into buffer
+    // process the buffer character by character
+    	br = read(STDIN_FILENO, temp, BUFFER);
+	
+	if (strlen(temp) <= 4 || temp[4] == ' ') {
+	    fprintf(stderr, "Invalid Command\n");
+	    return 1;
+	}
+	
 
-    char *mode = strtok(temp, " ");
-    char *file_name = strtok(NULL, " ");
 
-    //    scanf("%s %s", mode, file_name);
+	// Check for newline
+	if (strchr(temp, '\n') == NULL) {
+//	    printf("%s!", temp);
+//	    printf("apparently there is no newline\n");
+	    fprintf(stderr, "Invalid Command\n");
+	    return 1;
+	}
+
+        char *mode = strtok(temp, " ");
+
+
+        char *file_name = strtok(NULL, "\n");	
+
+
+	if (br < 0) {
+            fprintf(stderr, "Invalid Command\n");
+            return 1;
+        }
+
+
+
+//	printf("test with:%s!\n", mode);
+
+
+//    scanf("%[^\n]", temp);
+
+
 
     // If the entered command was set
     if (strcmp(mode, "set") == 0) {
@@ -61,7 +90,7 @@ int main() {
                 } while (bytes_written < bytes_read);
             }
         } while (bytes_read > 0);
-        printf("OK\n");
+        fprintf(stdout, "OK\n");
         close(set);
     }
 
