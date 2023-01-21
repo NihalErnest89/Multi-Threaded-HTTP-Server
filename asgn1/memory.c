@@ -17,9 +17,9 @@ int main() {
     //    char mode[3]; // PATH_MAX defined as the file name size limit
     //    char file_name[PATH_MAX];
 
-    char temp[PATH_MAX + 4];
+    char temp[PATH_MAX + 6];
     int br = 0;
-
+    char *first = NULL;
     // read it all into buffer
     // process the buffer character by character
     	br = read(STDIN_FILENO, temp, BUFFER);
@@ -29,8 +29,10 @@ int main() {
 	    return 1;
 	}
 	
-
-
+	
+        char *dupe = strdup(temp);
+	first = strchr(dupe, '\n');
+//	printf("Test %s!%lu.\n", first, strlen(first));
 	// Check for newline
 	if (strchr(temp, '\n') == NULL) {
 //	    printf("%s!", temp);
@@ -38,7 +40,7 @@ int main() {
 	    fprintf(stderr, "Invalid Command\n");
 	    return 1;
 	}
-
+	
         char *mode = strtok(temp, " ");
 
 
@@ -62,8 +64,14 @@ int main() {
     // If the entered command was set
     if (strcmp(mode, "set") == 0) {
         char text[BUFFER];
+	int set = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
-        int set = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+//	printf("temp:%s\n", first);
+	if (strcmp(first, "\n") != 0) {
+            char *firstLine = strtok(NULL, "\0");
+	    write(set, firstLine, strlen(firstLine));
+	}
+
         int bytes_read = 0;
 
         if (set < 0) {
@@ -99,7 +107,7 @@ int main() {
         // The buffer stores each line of the file temporarily.
 
         int get = open(file_name, O_RDONLY);
-        if (get < 0) {
+        if (get < 0 || (strlen(first) > 3)) {
             fprintf(stderr, "Invalid Command\n");
             return 1;
         }
