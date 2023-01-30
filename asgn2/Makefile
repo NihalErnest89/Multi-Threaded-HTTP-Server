@@ -1,11 +1,12 @@
 CC = clang
 CFLAGS = -Wall -pedantic -Werror -Wextra
 
+
 all: httpserver
 
 
-httpserver: httpserver.o
-	$(CC) -o httpserver httpserver.o
+httpserver: httpserver.o asgn2_helper_funcs.a
+	$(CC) -o httpserver httpserver.o asgn2_helper_funcs.a
 
 
 httpserver.o: httpserver.c
