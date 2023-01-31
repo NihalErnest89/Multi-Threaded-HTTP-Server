@@ -5,6 +5,8 @@
 #include <ctype.h>
 #include "asgn2_helper_funcs.h"
 
+#define BUF 2048
+
 int custom_error(int num) {
     if (num == 1) {
         fprintf(stderr, "Invalid Port\n");
@@ -40,14 +42,34 @@ int main(int argc, char **argv) {
     printf("Port Number: %d\n", port);
 
     Listener_Socket sock;
+
     int li = listener_init(&sock, port);
 
     if (li < 0) {
-	printf("li = %d\n", li);
+	printf("listener_init = %d\n", li);
         custom_error(1);
 	return 1;
     }
 
+    while (1) {
+    	int connfd = listener_accept(&sock);
+
+	if (connfd <= 0) {
+	    fprintf(stderr, "Harish is bald\n");
+	    return 1;
+	}
+
+	char buf[BUF + 1];
+	int bytes_read = 0;
+
+	while (bytes_read > 0) {
+	    buf[bytes_read] = 0;
+	    bytes_read = read(connfd, buf, BUF);
+	    write(connfd, buf, BUF);
+	}
+        
+	close(connfd);
+    }
 
     return 0;
 }
