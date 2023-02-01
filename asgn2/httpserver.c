@@ -50,24 +50,23 @@ int main(int argc, char **argv) {
         custom_error(1);
 	return 1;
     }
-
+    printf("listener_init succeeded\n");
     while (1) {
     	int connfd = listener_accept(&sock);
-
-	if (connfd <= 0) {
-	    fprintf(stderr, "Harish is bald\n");
-	    return 1;
-	}
+        printf("connection was just opened\n");
 
 	char buf[BUF + 1];
 	int bytes_read = 0;
 
-	while (bytes_read > 0) {
+	printf("test\n");
+
+	do {
 	    buf[bytes_read] = 0;
 	    bytes_read = read(connfd, buf, BUF);
-	    write(connfd, buf, BUF);
-	}
+	    write(connfd, buf, bytes_read);
+	} while (bytes_read > 0);
         
+	printf("endgame\n"); 
 	close(connfd);
     }
 
