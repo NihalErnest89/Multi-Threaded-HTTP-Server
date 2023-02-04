@@ -58,6 +58,12 @@ int main(int argc, char **argv) {
     
     regex_t regex;
     regcomp(&regex, "[a-zA-Z0-9.-]", REG_EXTENDED);
+    
+//    char method[3];
+//    char file[20];
+//    regmatch_t matches[3];
+
+    
 
     while (1) {
 //        char method[3];
@@ -68,6 +74,42 @@ int main(int argc, char **argv) {
     	int connfd = listener_accept(&sock);
         printf("connection was just opened\n");
 
+	// Read in header char by char
+	char rq[2048];
+	char c;
+        
+	int rq_line_size = 0;
+	int is_slash_r = 0;
+
+	while (read(connfd, &c, 1) > 0) {
+	    if (c == '\r') {
+	        is_slash_r = 1;
+	    }
+	    else if (c == '\n' && is_slash_r == 1) {
+	        break;
+	    }
+
+	    else {
+	    	rq[rq_line_size] = c;
+		is_slash_r = 0;
+		rq_line_size += 1;
+	    }
+
+	}
+
+	if (c != '\n') {
+	    // replace with vaid error
+	    printf("invalid request");
+	    return 1;
+	}
+
+	// Following two lines are testers
+	printf("Request Line: %s\n", rq);
+	write(connfd, rq, rq_line_size);
+	write(connfd, "\n", 1);
+
+	// Read the rest
+	
 	char buf[BUF + 1];
 	int bytes_read = 0;
 	char *token;
