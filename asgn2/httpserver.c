@@ -57,7 +57,8 @@ int main(int argc, char **argv) {
     //printf("listener_init succeeded\n");
     
     regex_t regex;
-    regcomp(&regex, "[a-zA-Z0-9.-]", REG_EXTENDED);
+//    regcomp(&regex, "[a-zA-Z0-9.-]", REG_EXTENDED);
+    regcomp(&regex, "(GET|PUT) (/[^ ]+) +(HTTP/[1][.][1])", REG_EXTENDED);
     
 //    char method[3];
 //    char file[20];
@@ -66,11 +67,7 @@ int main(int argc, char **argv) {
     
 
     while (1) {
-//        char method[3];
-//	char file[20];
 
-//	regmatch_t matches[3];
-	
     	int connfd = listener_accept(&sock);
         printf("connection was just opened\n");
 
@@ -80,13 +77,15 @@ int main(int argc, char **argv) {
         
 	int rq_line_size = 0;
 	int is_slash_r = 0;
+	int is_slash_n = 0;
 
 	while (read(connfd, &c, 1) > 0) {
 	    if (c == '\r') {
 	        is_slash_r = 1;
 	    }
 	    else if (c == '\n' && is_slash_r == 1) {
-	        break;
+	        is_slash_n = 1;
+		break;
 	    }
 
 	    else {
@@ -97,15 +96,34 @@ int main(int argc, char **argv) {
 
 	}
 
-	if (c != '\n') {
+	// If theres no \r\n separating the request line
+	if (is_slash_r == 0 || is_slash_n == 0) {
 	    // replace with vaid error
 	    printf("invalid request");
 	    return 1;
 	}
 
+	char m[3];
+	char f[2048];
+	regmatch_t matches[3];
+
 	// Following two lines are testers
 	printf("Request Line: %s\n", rq);
-	write(connfd, rq, rq_line_size);
+
+        if (regexec(&regex, rq, 3, matches, 0) == 0) {
+	    int m_len = matches[1].rm_eo - matches[1].rm_so;
+	    int f_len = matches[2].rm_eo - matches[2].rm_so;
+	    strncpy(m, rq + matches[1].rm_so, m_len);
+
+	    // + 1 to skip past the slash in /foo.txt
+	    strncpy(f, rq + matches[2].rm_so + 1, f_len - 1);
+	    write(connfd, "\nSuccess", 8);    
+	}	
+        else {
+	    char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
+	    write(connfd, error_msg, strlen(error_msg));
+	}
+	//write(connfd, rq, rq_line_size);
 	write(connfd, "\n", 1);
 
 	// Read the rest
@@ -119,11 +137,14 @@ int main(int argc, char **argv) {
 	bytes_read = read(connfd, buf, BUF);
 	token = strtok_r(buf, "\r\n", &rest);
 
-	printf("request: %s\n", token);
+
+
+	printf("Content: %s\n", token);
+	printf("Function: %s\n", m);
+	printf("File Name: %s\n", f);
         
-	//fix this later. writing this one line without breaks can be too much
-	
-	write(connfd, rest + 3, bytes_read - strlen(token));
+	//fix this later. writing this one line without breaks can be too much	
+	//write(connfd, rest, bytes_read - strlen(token));
 
         bytes_read = 0;
 	do {
