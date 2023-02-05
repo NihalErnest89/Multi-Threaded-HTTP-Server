@@ -60,10 +60,10 @@ int main(int argc, char **argv) {
     }
     //printf("listener_init succeeded\n");
     
-    regex_t regex;
+//    regex_t regex;
 //    regcomp(&regex, "[a-zA-Z0-9.-]", REG_EXTENDED);
 //    regcomp(&regex, "^(GET|PUT) (/[^ ]+) +(HTTP/[1][.][1+])", REG_EXTENDED);
-    regcomp(&regex, "^([A-Za-z]+) (/[^ ]+) +(HTTP/[0-9]+.[0-9]+)", REG_EXTENDED);
+//    regcomp(&regex, "^([A-Za-z]+) (/[^ ]+) +(HTTP/[0-9]+.[0-9]+)", REG_EXTENDED);
     
 
     
@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 	// Read in header char by char
 	char rq[2048];
 	char c;
-        
+
 	int rq_line_size = 0;
 	int is_slash_r = 0;
 	int is_slash_n = 0;
@@ -85,30 +85,36 @@ int main(int argc, char **argv) {
 	    if (c == '\r') {
 	        is_slash_r = 1;
 	    }
+
 	    else if (c == '\n' && is_slash_r == 1) {
 	        is_slash_n = 1;
 		break;
 	    }
 
 	    else {
-	    	rq[rq_line_size] = c;
-		is_slash_r = 0;
-		rq_line_size += 1;
+		    rq[rq_line_size] = c;
+		    is_slash_r = 0;
+		    rq_line_size ++;
 	    }
-
 	}
 
-	// If theres no \r\n separating the request line
 	if (is_slash_r == 0 || is_slash_n == 0) {
-	    // replace with vaid error
-	    printf("invalid request");
+	    printf("invlaid req");
 	    return 1;
 	}
+        
+	//int bytes_read_1 = read_until(connfd, rq, 2048, "\r\n");
+	//printf("test: %s\n", rq);
+	//printf("lol: %d\n", bytes_read_1);
+	// If theres no \r\n separating the request line
 
-	char m[3];
-	char f[64];
-	char h[10];
+	char m[9];
+	char f[65];
+	char h[8];
 	regmatch_t matches[4];
+	regex_t regex;
+        regcomp(&regex, "^([A-Za-z]+) (/[^ ]+) +(HTTP/1.[0-9]+)", REG_EXTENDED);
+
 
 	// Following two lines are testers
 	printf("Request Line: %s\n", rq);
@@ -130,11 +136,12 @@ int main(int argc, char **argv) {
 	    strncpy(m, rq + matches[1].rm_so, m_len);
             m[m_len] = '\0';
 	    // + 1 to skip past the slash in /foo.txt
-	    strncpy(f, rq + matches[2].rm_so + 1, f_len - 1);
+	    strncpy(f, rq + matches[2].rm_so, f_len);
 	    f[f_len] = '\0';
 	    strncpy(h, rq + matches[3].rm_so, h_len);
 	    h[h_len] = '\0';
 	    printf("h = %s\n", h);
+
 	}	
         else {
 	    char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
@@ -169,10 +176,11 @@ int main(int argc, char **argv) {
 	    write(connfd, buf, bytes_read);
 	} while (bytes_read > 0);
         
-	// printf("endgame\n"); 
+	// printf("endgame\n");
+	memset(rq, 0, sizeof(rq)); 
 	close(connfd);
+	regfree(&regex);
     }
     
-    regfree(&regex);
     return 0;
 }
