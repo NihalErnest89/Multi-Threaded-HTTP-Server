@@ -7,12 +7,16 @@
 #include <regex.h>
 
 #define BUF 2048
+#define EMPTY 0
 
-
-
-int custom_error(int num) {
+int custom_error(int num, int connfd) {
     if (num == 1) {
         fprintf(stderr, "Invalid Port\n");
+    }
+    else if (num == 400) {
+	printf("This program is bald\n");
+        char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
+        write(connfd, error_msg, strlen(error_msg));
     }
     return 0;
 }
@@ -21,7 +25,7 @@ int main(int argc, char **argv) {
 
     // Throw an error if the number of command-line arguments is incorrect or the port number is not a number
     if (argc != 2) {
-        custom_error(1);
+        custom_error(1, 0);
         return 1;
     }
     
@@ -39,7 +43,7 @@ int main(int argc, char **argv) {
     int port = atoi(argv[1]);
 
     if (is_number == 0 || port < 1 || port > 65535) {
-	    custom_error(1);
+	    custom_error(1, 0);
 	    return 1;
     }
 
@@ -51,18 +55,16 @@ int main(int argc, char **argv) {
 
     if (li < 0) {
 	//printf("listener_init = %d\n", li);
-        custom_error(1);
+        custom_error(1, 0);
 	return 1;
     }
     //printf("listener_init succeeded\n");
     
     regex_t regex;
 //    regcomp(&regex, "[a-zA-Z0-9.-]", REG_EXTENDED);
-    regcomp(&regex, "(GET|PUT) (/[^ ]+) +(HTTP/[1][.][1])", REG_EXTENDED);
+//    regcomp(&regex, "^(GET|PUT) (/[^ ]+) +(HTTP/[1][.][1+])", REG_EXTENDED);
+    regcomp(&regex, "^([A-Za-z]+) (/[^ ]+) +(HTTP/[0-9]+.[0-9]+)", REG_EXTENDED);
     
-//    char method[3];
-//    char file[20];
-//    regmatch_t matches[3];
 
     
 
@@ -104,28 +106,41 @@ int main(int argc, char **argv) {
 	}
 
 	char m[3];
-	char f[2048];
-	regmatch_t matches[3];
+	char f[64];
+	char h[10];
+	regmatch_t matches[4];
 
 	// Following two lines are testers
 	printf("Request Line: %s\n", rq);
+//        char *rq_2 = strdup(rq);
 
-        if (regexec(&regex, rq, 3, matches, 0) == 0) {
+
+        if (regexec(&regex, rq, 4, matches, 0) == 0) {
 	    int m_len = matches[1].rm_eo - matches[1].rm_so;
 	    int f_len = matches[2].rm_eo - matches[2].rm_so;
-	    strncpy(m, rq + matches[1].rm_so, m_len);
+	    int h_len = matches[3].rm_eo - matches[3].rm_so;
 
+	    // h_len > 8 means that HTTP 1.1###...
+
+            if (m_len > 8 || (f_len > 64) || (h_len > 8)) {
+	        printf("h_len = %d\n", h_len); 
+		custom_error(400, connfd);
+	    }
+
+	    strncpy(m, rq + matches[1].rm_so, m_len);
+            m[m_len] = '\0';
 	    // + 1 to skip past the slash in /foo.txt
 	    strncpy(f, rq + matches[2].rm_so + 1, f_len - 1);
-	    write(connfd, "\nSuccess", 8);    
+	    f[f_len] = '\0';
+	    strncpy(h, rq + matches[3].rm_so, h_len);
+	    h[h_len] = '\0';
+	    printf("h = %s\n", h);
 	}	
         else {
 	    char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
-	    write(connfd, error_msg, strlen(error_msg));
+            write(connfd, error_msg, strlen(error_msg));
+	    custom_error(400, connfd);
 	}
-	//write(connfd, rq, rq_line_size);
-	write(connfd, "\n", 1);
-
 	// Read the rest
 	
 	char buf[BUF + 1];
@@ -133,15 +148,14 @@ int main(int argc, char **argv) {
 	char *token;
 	char *rest;
 	// printf("test\n");
-	
+
 	bytes_read = read(connfd, buf, BUF);
 	token = strtok_r(buf, "\r\n", &rest);
 
 
-
-	printf("Content: %s\n", token);
+        printf("Content: %s\n", token);
 	printf("Function: %s\n", m);
-	printf("File Name: %s\n", f);
+	printf("File Name: %s\n\n", f);
         
 	//fix this later. writing this one line without breaks can be too much	
 	//write(connfd, rest, bytes_read - strlen(token));
