@@ -60,6 +60,13 @@ int custom_error(int num, int connfd) {
 	close(connfd);
     }
 
+    else if (num == 505) {
+        char error_msg[] = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: 22\r\n\r\nVersion Not Supported\n";
+	write(connfd, error_msg, strlen(error_msg));
+	blind_read(connfd);
+	close(connfd);
+    }
+
     return 0;
 }
 
@@ -192,6 +199,16 @@ int main(int argc, char **argv) {
             custom_error(400, connfd);
 	    continue;
         }
+
+	// Check if version is correct
+	
+	if (strcmp(h, "HTTP/1.1") != 0) {
+	    memset(rq, 0, sizeof(rq));
+            regfree(&regex);
+
+	    custom_error(505, connfd);
+	    continue;
+	}
 
 	// Check if file is directory
 	struct stat dir;
