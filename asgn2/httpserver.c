@@ -168,6 +168,10 @@ int main(int argc, char **argv) {
             if (m_len > 8 || (f_len > 64) || (h_len > 8)) {
                 printf("h_len = %d\n", h_len);
                 custom_error(400, connfd);
+
+		memset(rq, 0, sizeof(rq));
+                regfree(&regex);
+
 		continue;
             }
 
@@ -182,8 +186,10 @@ int main(int argc, char **argv) {
             h[h_len] = '\0';
 
         } else {
+            memset(rq, 0, sizeof(rq));
+            regfree(&regex);
+
             custom_error(400, connfd);
-	    printf("error 400 * 2");
 	    continue;
         }
 
@@ -192,6 +198,9 @@ int main(int argc, char **argv) {
 	stat(f, &dir);
 	if (S_ISDIR(dir.st_mode)) {
 	    printf("is dir");
+	    memset(rq, 0, sizeof(rq));
+            regfree(&regex);
+
 	    custom_error(403, connfd);
 	    continue;
 	}
@@ -209,6 +218,10 @@ int main(int argc, char **argv) {
             infile = open(f, O_RDWR);
             if (infile < 0) {
                 custom_error(404, connfd);
+		memset(rq, 0, sizeof(rq));
+                memset(buf, 0, sizeof(buf));
+                regfree(&regex);
+
 		continue;
             }
 
@@ -232,13 +245,23 @@ int main(int argc, char **argv) {
             write(connfd, rest, strlen(rest));
         }
 
-        if (strcmp(m, "PUT") == 0) {
+	else if (strcmp(m, "PUT") == 0) {
             outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
             if (outfile < 0) {
                 printf("Error 404\n");
             }
             infile = connfd;
         }
+
+	else {
+	    blind_read(connfd);
+	    close(connfd);
+	    memset(rq, 0, sizeof(rq));
+            memset(buf, 0, sizeof(buf));
+            regfree(&regex);
+
+	    continue;
+	}
 
         //bytes_read = read(connfd, buf, BUF);
         //token = strtok_r(buf, "\r\n", &rest);
@@ -252,7 +275,7 @@ int main(int argc, char **argv) {
         char buf_2[BUF + 1];
 
         bytes_read = 0;
-        printf("bytes_read: %d", bytes_read);
+        printf("bytes_read: %d\n", bytes_read);
 
         // send 200 code
 
