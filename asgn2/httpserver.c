@@ -11,6 +11,17 @@
 #define BUF   2048
 #define EMPTY 0
 
+int blind_read(int connfd) {
+    char blind[BUF];
+    int result = read(connfd, blind, BUF);
+    while(result > 0) {
+        result = read(connfd, blind, BUF);
+    }
+
+    return 0;
+}
+
+
 int custom_error(int num, int connfd) {
     if (num == 1) {
         fprintf(stderr, "Invalid Port\n");
@@ -18,6 +29,8 @@ int custom_error(int num, int connfd) {
         printf("This program is bald\n");
         char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
         write(connfd, error_msg, strlen(error_msg));
+	blind_read(connfd);
+	close(connfd);
     }
 
     else if (num == 200) {
@@ -33,8 +46,17 @@ int custom_error(int num, int connfd) {
         write(connfd, len, strlen(len));
         write(connfd, rest, strlen(rest));
     }
+	
+    else if (num == 404) {
+        char error_msg[] = "HTTP/1.1 404 Not Found\r\nContent-Length: 10\r\n\r\nNot Found\n";
+	write(connfd, error_msg, strlen(error_msg));
+	blind_read(connfd);
+	close(connfd);
+    }
+
     return 0;
 }
+
 
 int main(int argc, char **argv) {
 
@@ -140,6 +162,7 @@ int main(int argc, char **argv) {
             if (m_len > 8 || (f_len > 64) || (h_len > 8)) {
                 printf("h_len = %d\n", h_len);
                 custom_error(400, connfd);
+		continue;
             }
 
             strncpy(m, rq + matches[1].rm_so, m_len);
@@ -154,6 +177,8 @@ int main(int argc, char **argv) {
 
         } else {
             custom_error(400, connfd);
+	    printf("error 400 * 2");
+	    continue;
         }
         // Read the rest
         char buf[BUF + 1];
@@ -167,7 +192,8 @@ int main(int argc, char **argv) {
         if (strcmp(m, "GET") == 0) {
             infile = open(f, O_RDWR);
             if (infile < 0) {
-                printf("Error 404\n");
+                custom_error(404, connfd);
+		continue;
             }
 
             // do this to prevent errors
