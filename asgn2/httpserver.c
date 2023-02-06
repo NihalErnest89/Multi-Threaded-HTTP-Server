@@ -2,9 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <ctype.h>
 #include "asgn2_helper_funcs.h"
 #include <regex.h>
+#include <sys/stat.h>
 
 #define BUF   2048
 #define EMPTY 0
@@ -16,6 +18,21 @@ int custom_error(int num, int connfd) {
         printf("This program is bald\n");
         char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
         write(connfd, error_msg, strlen(error_msg));
+    }
+
+    else if (num == 200) {
+	struct stat fileStat;
+	fstat(connfd, &fileStat);
+
+	char len[10];
+	sprintf(len, "%ld", fileStat.st_size);
+
+	char ok_msg[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
+	char rest[] = "\r\n\r\n";
+	write(connfd, ok_msg, strlen(ok_msg));
+	write(connfd, len, strlen(len));
+	write(connfd, rest, strlen(rest));
+
     }
     return 0;
 }
@@ -104,15 +121,15 @@ int main(int argc, char **argv) {
         // If theres no \r\n separating the request line
 
         char m[9];
-        char f[65];
-        char h[8];
+        char f[10];
+        char h[9];
         regmatch_t matches[4];
         regex_t regex;
-        regcomp(&regex, "^([A-Za-z]+) (/[^ ]+) +(HTTP/1.[0-9]+)", REG_EXTENDED);
+        regcomp(&regex, "^([A-Za-z]+) (/[^ ]+) +(HTTP/[0-9].[0-9]+)", REG_EXTENDED);
 
         // Following two lines are testers
         printf("Request Line: %s\n", rq);
-        //        char *rq_2 = strdup(rq);
+        //char *file = NULL;
 
         if (regexec(&regex, rq, 4, matches, 0) == 0) {
             int m_len = matches[1].rm_eo - matches[1].rm_so;
@@ -129,48 +146,110 @@ int main(int argc, char **argv) {
             strncpy(m, rq + matches[1].rm_so, m_len);
             m[m_len] = '\0';
             // + 1 to skip past the slash in /foo.txt
-            strncpy(f, rq + matches[2].rm_so, f_len);
-            f[f_len] = '\0';
+
+	    strncpy(f, rq + matches[2].rm_so + 1, f_len - 1);
+            f[f_len - 1] = '\0';
+
+
             strncpy(h, rq + matches[3].rm_so, h_len);
-            h[h_len] = '\0';
-            printf("h = %s\n", h);
+	    h[h_len] = '\0';
 
         } else {
-            char error_msg[]
-                = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
-            write(connfd, error_msg, strlen(error_msg));
-            custom_error(400, connfd);
+          custom_error(400, connfd);
         }
         // Read the rest
-
         char buf[BUF + 1];
         int bytes_read = 0;
-        char *token;
-        char *rest;
+        //char *token;
+        //char *rest;
         // printf("test\n");
+	
+	int infile = 0;
+	int outfile = 0;
+	if (strcmp(m, "GET") == 0) {
+	    infile = open(f, O_RDWR);
+	    if (infile < 0) {
+	        printf("Error 404\n");
+	    }
+	    
+            // do this to prevent errors
+	    bytes_read = read(connfd, buf, BUF);
+	    bytes_read = 0;
 
-        bytes_read = read(connfd, buf, BUF);
-        token = strtok_r(buf, "\r\n", &rest);
+	    outfile = connfd;
 
-        printf("Content: %s\n", token);
+	    char ok_msg[] = "HTTP/1.1 200 OK\r\nContent-Length: ";
+        char rest[] = "\r\n\r\n";
+
+        struct stat sb;
+        stat(f, &sb);
+
+        char len[10];
+        sprintf(len, "%ld", sb.st_size);
+
+	write(connfd, ok_msg, strlen(ok_msg));
+	write(connfd, len, strlen(len));
+	write(connfd, rest, strlen(rest));
+
+	}
+	
+	if (strcmp(m, "PUT") == 0) {
+	    outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
+	    if (outfile < 0) {
+	        printf("Error 404\n");
+	    }
+	    infile = connfd;
+	}
+
+        //bytes_read = read(connfd, buf, BUF);
+        //token = strtok_r(buf, "\r\n", &rest);
+
+        //printf("Content: %s\n", token);
         printf("Function: %s\n", m);
         printf("File Name: %s\n\n", f);
-
         //fix this later. writing this one line without breaks can be too much
         //write(connfd, rest, bytes_read - strlen(token));
 
+	char buf_2[BUF + 1];
+	
         bytes_read = 0;
-        do {
-            buf[bytes_read] = 0;
-            bytes_read = read(connfd, buf, BUF);
-            token = strtok(buf, "\r\n");
+	printf("bytes_read: %d", bytes_read);
+      
+        // send 200 code
+		
 
-            write(connfd, buf, bytes_read);
-        } while (bytes_read > 0);
+	do {
+	    bytes_read = read(infile, buf_2, BUF);
+	    if (bytes_read < 0) {
+	        printf("Error 400");
+	    }
 
-        // printf("endgame\n");
-        memset(rq, 0, sizeof(rq));
-        close(connfd);
+	    else {
+	        int bytes_written = 0;
+		do {
+		    int bytes = write(outfile, buf_2 + bytes_written, bytes_read - bytes_written);
+		    if (bytes < 0) {
+		         printf("Error 404");
+		    }
+                    
+
+		    bytes_written += bytes;
+		} while (bytes_written < bytes_read);
+	    }
+	    memset(buf_2, 0, sizeof(buf_2));
+
+	} while (bytes_read > 0);
+
+	if (infile != 0) {
+	    close(infile);
+	}
+
+	if (outfile != 0) {
+	    close(outfile);
+	}
+	
+	memset(rq, 0, sizeof(rq));
+	memset(buf, 0, sizeof(buf));
         regfree(&regex);
     }
 
