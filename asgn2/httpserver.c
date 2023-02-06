@@ -26,7 +26,6 @@ int custom_error(int num, int connfd) {
     if (num == 1) {
         fprintf(stderr, "Invalid Port\n");
     } else if (num == 400) {
-        printf("This program is bald\n");
         char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
         write(connfd, error_msg, strlen(error_msg));
 	blind_read(connfd);
@@ -46,7 +45,14 @@ int custom_error(int num, int connfd) {
         write(connfd, len, strlen(len));
         write(connfd, rest, strlen(rest));
     }
-	
+
+    else if (num == 403) {
+        char error_msg[] = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
+	write(connfd, error_msg, strlen(error_msg));
+	blind_read(connfd);
+	close(connfd);
+    }
+
     else if (num == 404) {
         char error_msg[] = "HTTP/1.1 404 Not Found\r\nContent-Length: 10\r\n\r\nNot Found\n";
 	write(connfd, error_msg, strlen(error_msg));
@@ -180,6 +186,16 @@ int main(int argc, char **argv) {
 	    printf("error 400 * 2");
 	    continue;
         }
+
+	// Check if file is directory
+	struct stat dir;
+	stat(f, &dir);
+	if (S_ISDIR(dir.st_mode)) {
+	    printf("is dir");
+	    custom_error(403, connfd);
+	    continue;
+	}
+
         // Read the rest
         char buf[BUF + 1];
         int bytes_read = 0;
