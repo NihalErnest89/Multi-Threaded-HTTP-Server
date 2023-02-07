@@ -47,9 +47,9 @@ int custom_error(int num, int connfd) {
 
     else if (num == 201) {
         char ok_msg[] = "HTTP/1.1 201 Created\r\nContent-Length: 8\r\n\r\nCreated\n";
-	write(connfd, ok_msg, strlen(ok_msg));
-	blind_read(connfd);
-	close(connfd);
+        write(connfd, ok_msg, strlen(ok_msg));
+        blind_read(connfd);
+        close(connfd);
     }
 
     else if (num == 403) {
@@ -307,8 +307,54 @@ int main(int argc, char **argv) {
             outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
 
             // Check content length characters
-            char temp[17];
-            int taco = read_until(connfd, temp, 16, "NULL");
+            char temp[100];
+            char t;
+            int t_count = 0;
+            int taco = 0;
+            int t1 = 0;
+            int t2 = 0;
+            int t3 = 0;
+
+            // Read all the headers
+            while (read(connfd, &t, 1)) {
+                if (t == '\r') {
+                    if (t1 == 0) {
+                        t1 = 1;
+                    } else if (t1 == 1 && t2 == 1) {
+                        t3 = 1;
+                    }
+                }
+
+                else if (t == '\n') {
+                    temp[t_count] = t;
+                    t_count++;
+                    if (t2 == 0 && t1 == 1) {
+                        t2 = 1;
+                    }
+
+                    else if (t3 == 1) {
+                        break;
+                    }
+                } else {
+                    t1 = 0;
+                    t2 = 0;
+                    t3 = 0;
+                    temp[t_count] = t;
+                    t_count++;
+                }
+            }
+
+            // strtok each header and check to see if its correct
+
+            char *l_temp;
+            l_temp = strtok(temp, "\n");
+            printf("l_temp: %s\n", l_temp);
+            while (l_temp != NULL) {
+                // add further regex stuff to check validity of other headers
+                // check for content length
+                
+                l_temp = strtok(NULL, "\n");
+            }
 
             if (taco == 0 || strcmp(temp, "Content-Length: ")) {
                 custom_error(400, connfd);
@@ -322,7 +368,6 @@ int main(int argc, char **argv) {
                 continue;
             }
             memset(temp, 0, sizeof(temp));
-
 
             char content_length[10];
             char content_buffer;
@@ -367,15 +412,14 @@ int main(int argc, char **argv) {
                 regfree(&regex);
 
                 continue;
-
             }
             infile = connfd;
-            
-	    char buf_3[BUF];
 
-	    read(infile, buf_3, 2);
+            char buf_3[BUF];
 
-	    memset(buf_3, 0, sizeof(buf_3));
+            read(infile, buf_3, 2);
+
+            memset(buf_3, 0, sizeof(buf_3));
             int bytes_read = 0;
             printf("bytes_read: %d\n", bytes_read);
 
@@ -400,8 +444,8 @@ int main(int argc, char **argv) {
                 memset(buf_3, 0, sizeof(buf_3));
 
             } while (bytes_read > 0);
-            
-	    custom_error(201, connfd);
+
+            custom_error(201, connfd);
 
         }
 
