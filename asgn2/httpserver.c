@@ -304,7 +304,7 @@ int main(int argc, char **argv) {
         }
 
         else if (strcmp(m, "PUT") == 0) {
-            outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
+            outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
             // Check content length characters
             char temp[100];
@@ -316,7 +316,7 @@ int main(int argc, char **argv) {
             int t3 = 0;
 
             // Read all the headers
-            while (read(connfd, &t, 1)) {
+            while (read(connfd, &t, 1) > 0) {
                 if (t == '\r') {
                     if (t1 == 0) {
                         t1 = 1;
@@ -347,16 +347,33 @@ int main(int argc, char **argv) {
             // strtok each header and check to see if its correct
 
             char *l_temp;
+	    char c_buf[10];
+	    int c_len = 0;
             l_temp = strtok(temp, "\n");
-            printf("l_temp: %s\n", l_temp);
             while (l_temp != NULL) {
                 // add further regex stuff to check validity of other headers
                 // check for content length
+		
+		regex_t r;
+		regmatch_t rmatch[4];
+		regcomp(&r, "(Content-Length:) +([0-9])", REG_EXTENDED);
 
+		if (regexec(&r, l_temp, 4, rmatch, 0) == 0) {
+		    int t_len = matches[3].rm_eo - matches[3].rm_so;
+		    strncpy(c_buf, l_temp + matches[3].rm_so, t_len);
+		    c_buf[t_len] = '\0';
+		    taco = 1;
+		    printf("t_len: %s\n", c_buf);
+		    c_len = atoi(c_buf);
+		}
+		else {
+		     printf("L\n");
+		}
+		printf("%s\n", l_temp);
                 l_temp = strtok(NULL, "\n");
             }
 
-            if (taco == 0 || strcmp(temp, "Content-Length: ")) {
+            if (taco == 0) {
                 custom_error(400, connfd);
                 blind_read(connfd);
                 close(connfd);
@@ -368,42 +385,6 @@ int main(int argc, char **argv) {
                 continue;
             }
             memset(temp, 0, sizeof(temp));
-
-            char content_length[10];
-            char content_buffer;
-
-            int content_size = 0;
-
-            //	    while (read_until(connfd, &content_buffer, 1, "\r\n") > 0) {
-            //		content_length[content_size] = content_buffer;
-            //		content_size ++;
-            //	    }
-
-            int is_slash_r_2 = 0;
-            int is_slash_n_2 = 0;
-
-            while (read(connfd, &content_buffer, 1) > 0) {
-                if (content_buffer == '\r') {
-                    is_slash_r_2 = 1;
-                }
-
-                else if (content_buffer == '\n' && is_slash_r_2 == 1) {
-                    is_slash_n_2 = 1;
-                    break;
-                }
-
-                else {
-                    content_length[content_size] = content_buffer;
-                    is_slash_r_2 = 0;
-                    content_size++;
-                }
-            }
-            printf("is_slash_n_2 = %d\n", is_slash_n_2);
-            printf("content_length: %s\n", content_length);
-
-            int c_len = atoi(content_length);
-            printf("c_len: %d\n", c_len);
-            // Check content length number
 
             if (outfile < 0) {
                 custom_error(404, connfd);
@@ -417,9 +398,9 @@ int main(int argc, char **argv) {
 
             char buf_3[BUF];
 
-            read(infile, buf_3, 2);
-
-            memset(buf_3, 0, sizeof(buf_3));
+            printf("c_len:%d\n", c_len);
+	    
+	    memset(buf_3, 0, sizeof(buf_3));
             int bytes_read = 0;
             printf("bytes_read: %d\n", bytes_read);
 
