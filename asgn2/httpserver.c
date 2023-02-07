@@ -14,13 +14,12 @@
 int blind_read(int connfd) {
     char blind[BUF];
     int result = read(connfd, blind, BUF);
-    while(result > 0) {
+    while (result > 0) {
         result = read(connfd, blind, BUF);
     }
 
     return 0;
 }
-
 
 int custom_error(int num, int connfd) {
     if (num == 1) {
@@ -28,8 +27,8 @@ int custom_error(int num, int connfd) {
     } else if (num == 400) {
         char error_msg[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n";
         write(connfd, error_msg, strlen(error_msg));
-	blind_read(connfd);
-	close(connfd);
+        blind_read(connfd);
+        close(connfd);
     }
 
     else if (num == 200) {
@@ -48,28 +47,35 @@ int custom_error(int num, int connfd) {
 
     else if (num == 403) {
         char error_msg[] = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
-	write(connfd, error_msg, strlen(error_msg));
-	blind_read(connfd);
-	close(connfd);
+        write(connfd, error_msg, strlen(error_msg));
+        blind_read(connfd);
+        close(connfd);
     }
 
     else if (num == 404) {
         char error_msg[] = "HTTP/1.1 404 Not Found\r\nContent-Length: 10\r\n\r\nNot Found\n";
-	write(connfd, error_msg, strlen(error_msg));
-	blind_read(connfd);
-	close(connfd);
+        write(connfd, error_msg, strlen(error_msg));
+        blind_read(connfd);
+        close(connfd);
+    }
+
+    else if (num == 501) {
+        char error_msg[]
+            = "HTTP/1.1 501 Not Implemented\r\nContent-Length: 16\r\n\r\nNot Implemented\n";
+        write(connfd, error_msg, strlen(error_msg));
+        blind_read(connfd);
     }
 
     else if (num == 505) {
-        char error_msg[] = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: 22\r\n\r\nVersion Not Supported\n";
-	write(connfd, error_msg, strlen(error_msg));
-	blind_read(connfd);
-	close(connfd);
+        char error_msg[] = "HTTP/1.1 505 Version Not Supported\r\nContent-Length: "
+                           "22\r\n\r\nVersion Not Supported\n";
+        write(connfd, error_msg, strlen(error_msg));
+        blind_read(connfd);
+        close(connfd);
     }
 
     return 0;
 }
-
 
 int main(int argc, char **argv) {
 
@@ -176,10 +182,10 @@ int main(int argc, char **argv) {
                 printf("h_len = %d\n", h_len);
                 custom_error(400, connfd);
 
-		memset(rq, 0, sizeof(rq));
+                memset(rq, 0, sizeof(rq));
                 regfree(&regex);
 
-		continue;
+                continue;
             }
 
             strncpy(m, rq + matches[1].rm_so, m_len);
@@ -197,30 +203,30 @@ int main(int argc, char **argv) {
             regfree(&regex);
 
             custom_error(400, connfd);
-	    continue;
+            continue;
         }
 
-	// Check if version is correct
-	
-	if (strcmp(h, "HTTP/1.1") != 0) {
-	    memset(rq, 0, sizeof(rq));
+        // Check if version is correct
+
+        if (strcmp(h, "HTTP/1.1") != 0) {
+            memset(rq, 0, sizeof(rq));
             regfree(&regex);
 
-	    custom_error(505, connfd);
-	    continue;
-	}
+            custom_error(505, connfd);
+            continue;
+        }
 
-	// Check if file is directory
-	struct stat dir;
-	stat(f, &dir);
-	if (S_ISDIR(dir.st_mode)) {
-	    printf("is dir");
-	    memset(rq, 0, sizeof(rq));
+        // Check if file is directory
+        struct stat dir;
+        stat(f, &dir);
+        if (S_ISDIR(dir.st_mode)) {
+            printf("is dir");
+            memset(rq, 0, sizeof(rq));
             regfree(&regex);
 
-	    custom_error(403, connfd);
-	    continue;
-	}
+            custom_error(403, connfd);
+            continue;
+        }
 
         // Read the rest
         char buf[BUF + 1];
@@ -235,11 +241,11 @@ int main(int argc, char **argv) {
             infile = open(f, O_RDWR);
             if (infile < 0) {
                 custom_error(404, connfd);
-		memset(rq, 0, sizeof(rq));
+                memset(rq, 0, sizeof(rq));
                 memset(buf, 0, sizeof(buf));
                 regfree(&regex);
 
-		continue;
+                continue;
             }
 
             // do this to prevent errors
@@ -260,25 +266,96 @@ int main(int argc, char **argv) {
             write(connfd, ok_msg, strlen(ok_msg));
             write(connfd, len, strlen(len));
             write(connfd, rest, strlen(rest));
+
+            char buf_2[BUF + 1];
+
+            bytes_read = 0;
+            printf("bytes_read: %d\n", bytes_read);
+
+            do {
+                bytes_read = read(infile, buf_2, BUF);
+                if (bytes_read < 0) {
+                    printf("Error 400");
+                }
+
+                else {
+                    int bytes_written = 0;
+                    do {
+                        int bytes
+                            = write(outfile, buf_2 + bytes_written, bytes_read - bytes_written);
+                        if (bytes < 0) {
+                            printf("Error 404");
+                        }
+
+                        bytes_written += bytes;
+                    } while (bytes_written < bytes_read);
+                }
+                memset(buf_2, 0, sizeof(buf_2));
+
+            } while (bytes_read > 0);
+
         }
 
-	else if (strcmp(m, "PUT") == 0) {
+        else if (strcmp(m, "PUT") == 0) {
             outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
-            if (outfile < 0) {
+            
+
+	    // Check content length characters
+	    char temp[17];
+	    int taco = read_until(connfd, temp, 16, "NULL");
+
+	    if (taco == 0 || strcmp(temp, "Content-Length: ")) {
+                custom_error(400, connfd);
+                blind_read(connfd);
+                close(connfd);
+                memset(rq, 0, sizeof(rq));
+                memset(buf, 0, sizeof(buf));
+		memset(temp, 0, sizeof(temp));
+                regfree(&regex);
+
+                continue;
+
+
+            }
+	    memset(temp, 0, sizeof(temp));
+
+	    char content_length[10];
+	    char content_buffer;
+
+	    int content_size = 0;
+
+	    while (read_until(connfd, &content_buffer, 1, "\r\n") > 0) {
+		content_length[content_size] = content_buffer;
+		content_size ++;
+	    }
+
+	    printf("content_length: %s\n", content_length);
+
+	    int c_len = atoi(content_length);
+	    printf("c_len: %d\n", c_len);
+	    // Check content length number
+	    
+
+
+	    if (outfile < 0) {
                 printf("Error 404\n");
             }
             infile = connfd;
+
+            
+
         }
 
-	else {
-	    blind_read(connfd);
-	    close(connfd);
-	    memset(rq, 0, sizeof(rq));
+        else {
+            custom_error(501, connfd);
+            blind_read(connfd);
+            close(connfd);
+            memset(rq, 0, sizeof(rq));
             memset(buf, 0, sizeof(buf));
             regfree(&regex);
 
-	    continue;
-	}
+            continue;
+        }
 
         //bytes_read = read(connfd, buf, BUF);
         //token = strtok_r(buf, "\r\n", &rest);
@@ -289,33 +366,10 @@ int main(int argc, char **argv) {
         //fix this later. writing this one line without breaks can be too much
         //write(connfd, rest, bytes_read - strlen(token));
 
-        char buf_2[BUF + 1];
+        //        char buf_2[BUF + 1];
 
         bytes_read = 0;
         printf("bytes_read: %d\n", bytes_read);
-
-        // send 200 code
-
-        do {
-            bytes_read = read(infile, buf_2, BUF);
-            if (bytes_read < 0) {
-                printf("Error 400");
-            }
-
-            else {
-                int bytes_written = 0;
-                do {
-                    int bytes = write(outfile, buf_2 + bytes_written, bytes_read - bytes_written);
-                    if (bytes < 0) {
-                        printf("Error 404");
-                    }
-
-                    bytes_written += bytes;
-                } while (bytes_written < bytes_read);
-            }
-            memset(buf_2, 0, sizeof(buf_2));
-
-        } while (bytes_read > 0);
 
         if (infile != 0) {
             close(infile);
