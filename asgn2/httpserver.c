@@ -45,6 +45,13 @@ int custom_error(int num, int connfd) {
         write(connfd, rest, strlen(rest));
     }
 
+    else if (num == 201) {
+        char ok_msg[] = "HTTP/1.1 201 Created\r\nContent-Length: 8\r\n\r\nCreated\n";
+	write(connfd, ok_msg, strlen(ok_msg));
+	blind_read(connfd);
+	close(connfd);
+    }
+
     else if (num == 403) {
         char error_msg[] = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n";
         write(connfd, error_msg, strlen(error_msg));
@@ -298,51 +305,103 @@ int main(int argc, char **argv) {
 
         else if (strcmp(m, "PUT") == 0) {
             outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0644);
-            
 
-	    // Check content length characters
-	    char temp[17];
-	    int taco = read_until(connfd, temp, 16, "NULL");
+            // Check content length characters
+            char temp[17];
+            int taco = read_until(connfd, temp, 16, "NULL");
 
-	    if (taco == 0 || strcmp(temp, "Content-Length: ")) {
+            if (taco == 0 || strcmp(temp, "Content-Length: ")) {
                 custom_error(400, connfd);
                 blind_read(connfd);
                 close(connfd);
                 memset(rq, 0, sizeof(rq));
                 memset(buf, 0, sizeof(buf));
-		memset(temp, 0, sizeof(temp));
+                memset(temp, 0, sizeof(temp));
+                regfree(&regex);
+
+                continue;
+            }
+            memset(temp, 0, sizeof(temp));
+
+
+            char content_length[10];
+            char content_buffer;
+
+            int content_size = 0;
+
+            //	    while (read_until(connfd, &content_buffer, 1, "\r\n") > 0) {
+            //		content_length[content_size] = content_buffer;
+            //		content_size ++;
+            //	    }
+
+            int is_slash_r_2 = 0;
+            int is_slash_n_2 = 0;
+
+            while (read(connfd, &content_buffer, 1) > 0) {
+                if (content_buffer == '\r') {
+                    is_slash_r_2 = 1;
+                }
+
+                else if (content_buffer == '\n' && is_slash_r_2 == 1) {
+                    is_slash_n_2 = 1;
+                    break;
+                }
+
+                else {
+                    content_length[content_size] = content_buffer;
+                    is_slash_r_2 = 0;
+                    content_size++;
+                }
+            }
+            printf("is_slash_n_2 = %d\n", is_slash_n_2);
+            printf("content_length: %s\n", content_length);
+
+            int c_len = atoi(content_length);
+            printf("c_len: %d\n", c_len);
+            // Check content length number
+
+            if (outfile < 0) {
+                custom_error(404, connfd);
+                memset(rq, 0, sizeof(rq));
+                memset(buf, 0, sizeof(buf));
                 regfree(&regex);
 
                 continue;
 
-
-            }
-	    memset(temp, 0, sizeof(temp));
-
-	    char content_length[10];
-	    char content_buffer;
-
-	    int content_size = 0;
-
-	    while (read_until(connfd, &content_buffer, 1, "\r\n") > 0) {
-		content_length[content_size] = content_buffer;
-		content_size ++;
-	    }
-
-	    printf("content_length: %s\n", content_length);
-
-	    int c_len = atoi(content_length);
-	    printf("c_len: %d\n", c_len);
-	    // Check content length number
-	    
-
-
-	    if (outfile < 0) {
-                printf("Error 404\n");
             }
             infile = connfd;
-
             
+	    char buf_3[BUF];
+
+	    read(infile, buf_3, 2);
+
+	    memset(buf_3, 0, sizeof(buf_3));
+            int bytes_read = 0;
+            printf("bytes_read: %d\n", bytes_read);
+
+            do {
+                bytes_read = read(infile, buf_3, BUF);
+                if (bytes_read < 0) {
+                    printf("Error 400_bruh");
+                }
+
+                else {
+                    int bytes_written = 0;
+                    do {
+                        int bytes
+                            = write(outfile, buf_3 + bytes_written, bytes_read - bytes_written);
+                        if (bytes < 0) {
+                            printf("Error 404");
+                        }
+
+                        bytes_written += bytes;
+                    } while (bytes_written < bytes_read);
+                }
+                memset(buf_3, 0, sizeof(buf_3));
+
+            } while (bytes_read > 0);
+            
+	    custom_error(201, connfd);
 
         }
 
