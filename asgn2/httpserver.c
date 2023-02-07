@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
     while (1) {
 
         int connfd = listener_accept(&sock);
-        printf("connection was just opened\n");
+        //      printf("connection was just opened\n");
 
         // Read in header char by char
         char rq[2048];
@@ -305,10 +305,10 @@ int main(int argc, char **argv) {
 
         else if (strcmp(m, "PUT") == 0) {
 
-	    int does_exist = 0;
-	
-	    struct stat e;
-	    does_exist = (stat(f, &e) == 0);
+            int does_exist = 0;
+
+            struct stat e;
+            does_exist = (stat(f, &e) == 0);
 
             outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
@@ -353,33 +353,31 @@ int main(int argc, char **argv) {
             // strtok each header and check to see if its correct
 
             char *l_temp;
-	    char c_buf[10];
-	    int c_len = 0;
+            char c_buf[10];
+            int c_len = 0;
             l_temp = strtok(temp, "\n");
             while (l_temp != NULL) {
                 // add further regex stuff to check validity of other headers
                 // check for content length
-		
-		regex_t r;
-		regmatch_t rmatch[4];
-		regcomp(&r, "(Content-Length:) +([0-9])", REG_EXTENDED);
 
-		if (regexec(&r, l_temp, 4, rmatch, 0) == 0) {
-		    int t_len = matches[3].rm_eo - matches[3].rm_so;
-		    strncpy(c_buf, l_temp + matches[3].rm_so, t_len);
-		    c_buf[t_len] = '\0';
-		    taco = 1;
-		    printf("t_len: %s\n", c_buf);
-		    c_len = atoi(c_buf);
-		}
-		else {
-		     printf("L\n");
-		}
-		printf("%s\n", l_temp);
+                regex_t r;
+                regmatch_t rmatch[4];
+                regcomp(&r, "(Content-Length:) +([0-9])", REG_EXTENDED);
+
+                if (regexec(&r, l_temp, 4, rmatch, 0) == 0) {
+                    int t_len = matches[3].rm_eo - matches[3].rm_so;
+                    strncpy(c_buf, l_temp + matches[3].rm_so, t_len);
+                    c_buf[t_len] = '\0';
+                    taco = 1;
+                    //		    printf("t_len: %s\n", c_buf);
+                    c_len = atoi(c_buf);
+                } else {
+                    printf("L\n");
+                }
+                //		printf("%s\n", l_temp);
                 l_temp = strtok(NULL, "\n");
-		regfree(&r);
+                regfree(&r);
             }
-
 
             if (taco == 0) {
                 custom_error(400, connfd);
@@ -407,25 +405,20 @@ int main(int argc, char **argv) {
             char buf_3[BUF];
 
             printf("c_len:%d\n", c_len);
-	    
-	    memset(buf_3, 0, sizeof(buf_3));
+
+            memset(buf_3, 0, sizeof(buf_3));
             int bytes_read = 0;
-            printf("bytes_read: %d\n", bytes_read);
+            //        printf("bytes_read: %d\n", bytes_read);
 
             do {
                 bytes_read = read(infile, buf_3, BUF);
                 if (bytes_read < 0) {
-                    printf("Error 400_bruh");
-                }
-
-                else {
+                    printf("no more bytes");
+                } else {
                     int bytes_written = 0;
                     do {
                         int bytes
                             = write(outfile, buf_3 + bytes_written, bytes_read - bytes_written);
-                        if (bytes < 0) {
-                            printf("Error 404");
-                        }
 
                         bytes_written += bytes;
                     } while (bytes_written < bytes_read);
@@ -434,9 +427,9 @@ int main(int argc, char **argv) {
 
             } while (bytes_read > 0);
 
-	    if (does_exist) {
-	        custom_error(200, connfd);
-	    }
+            if (does_exist) {
+                custom_error(200, connfd);
+            }
             custom_error(201, connfd);
 
         }
@@ -456,15 +449,15 @@ int main(int argc, char **argv) {
         //token = strtok_r(buf, "\r\n", &rest);
 
         //printf("Content: %s\n", token);
-        printf("Function: %s\n", m);
-        printf("File Name: %s\n\n", f);
+        //        printf("Function: %s\n", m);
+        //        printf("File Name: %s\n\n", f);
         //fix this later. writing this one line without breaks can be too much
         //write(connfd, rest, bytes_read - strlen(token));
 
         //        char buf_2[BUF + 1];
 
         bytes_read = 0;
-        printf("bytes_read: %d\n", bytes_read);
+        //        printf("bytes_read: %d\n", bytes_read);
 
         if (infile != 0) {
             close(infile);
