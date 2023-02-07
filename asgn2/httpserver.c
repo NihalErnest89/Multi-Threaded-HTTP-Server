@@ -304,6 +304,12 @@ int main(int argc, char **argv) {
         }
 
         else if (strcmp(m, "PUT") == 0) {
+
+	    int does_exist = 0;
+	
+	    struct stat e;
+	    does_exist = (stat(f, &e) == 0);
+
             outfile = open(f, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
             // Check content length characters
@@ -371,7 +377,9 @@ int main(int argc, char **argv) {
 		}
 		printf("%s\n", l_temp);
                 l_temp = strtok(NULL, "\n");
+		regfree(&r);
             }
+
 
             if (taco == 0) {
                 custom_error(400, connfd);
@@ -426,6 +434,9 @@ int main(int argc, char **argv) {
 
             } while (bytes_read > 0);
 
+	    if (does_exist) {
+	        custom_error(200, connfd);
+	    }
             custom_error(201, connfd);
 
         }
