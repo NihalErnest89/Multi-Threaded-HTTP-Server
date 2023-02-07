@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
             while (l_temp != NULL) {
                 // add further regex stuff to check validity of other headers
                 // check for content length
-                
+
                 l_temp = strtok(NULL, "\n");
             }
 
