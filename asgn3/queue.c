@@ -14,7 +14,7 @@
  *  should define the variables that you need for your queue.
  */
 typedef struct queue {
-    int size;
+    int len;
     void **buffer;
 
 } queue;
@@ -28,7 +28,10 @@ typedef struct queue {
  */
 queue_t *queue_new(int size) {
     queue_t *q = malloc(sizeof(queue));
-    q->buffer = malloc(size * sizeof(void *));
+    
+    q->len = size;
+    q->buffer = (void **) malloc(size * sizeof(void *));
+  
 
     return q;
 }
@@ -40,7 +43,12 @@ queue_t *queue_new(int size) {
  *  *q = NULL after deallocation).
  *
  */
-void queue_delete(queue_t **q);
+void queue_delete(queue_t **q) {
+    if (q != NULL && *q != NULL) {
+	free(*q);    
+	*q = NULL;	
+    }
+}
 
 /** @brief push an element onto a queue
  *
