@@ -18,7 +18,7 @@ typedef struct queue {
     void **buffer;
 
     pthread_mutex_t mutex;
-    pthread_cond_t cv;
+    pthread_cond_t cv, cv2;
 
 } queue;
 
@@ -35,6 +35,7 @@ queue_t *queue_new(int size) {
 
     pthread_mutex_init(&q->mutex, NULL);
     pthread_cond_init(&q->cv, NULL);
+    pthread_cond_init(&q->cv2, NULL);
    
     q->count = 0;
     q->in = 0;
@@ -60,8 +61,9 @@ void queue_delete(queue_t **q) {
 	*q = NULL;	
     }
 
-    pthread_mutex_destroy(&(*q)->mutex);
-    pthread_cond_destroy(&(*q)->cv);
+    //pthread_mutex_destroy(&(*q)->mutex);
+    //pthread_cond_destroy(&(*q)->cv);
+    //pthread_cond_destroy(&(*q)->cv2);
 }
 
 /** @brief push an element onto a queue
@@ -76,7 +78,7 @@ void queue_delete(queue_t **q) {
 bool queue_push(queue_t *q, void *elem) {
     // if the queue is null or full
     if (q == NULL || q->count >= q->len) {
-        return 1;
+        return 0;
     }
 
     pthread_mutex_lock(&q->mutex);
@@ -90,9 +92,11 @@ bool queue_push(queue_t *q, void *elem) {
 
     q->count ++;
 
+    pthread_cond_signal(&q->cv2);
     pthread_mutex_unlock(&q->mutex);
 
-    return 0;
+
+    return 1;
 }
 
 /** @brief pop an element from a queue.
@@ -107,13 +111,13 @@ bool queue_push(queue_t *q, void *elem) {
 bool queue_pop(queue_t *q, void **elem) {
     // if the queue is null or empty
     if (q == NULL || q->count == 0) {
-        return 1;
+        return 0;
     }
      
     pthread_mutex_lock(&q->mutex);
 
     while (q->count == 0) {
-        pthread_cond_wait(&q->cv, &q->mutex);
+        pthread_cond_wait(&q->cv2, &q->mutex);
     }
 
     *elem = q->buffer[q->out];
@@ -121,6 +125,8 @@ bool queue_pop(queue_t *q, void **elem) {
     q->out = (q->out + 1) % q->len;
     q->count -= 1;
 
+    pthread_cond_signal(&q->cv);
+    pthread_mutex_unlock(&q->mutex);
 
-    return 0;
+    return 1;
 }
