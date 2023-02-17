@@ -4,14 +4,20 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/types.h>
+#define BUF 2048
 
 /** @struct queue_t
  *
  *  @brief This typedef renames the struct queue.  Your `c` file
  *  should define the variables that you need for your queue.
  */
-typedef struct queue queue_t;
+typedef struct queue {
+    int size;
+    void** buffer;
+
+} queue;
 
 
 /** @brief Dynamically allocates and initializes a new queue with a
@@ -21,7 +27,12 @@ typedef struct queue queue_t;
  *
  *  @return a pointer to a new queue_t
  */
-queue_t *queue_new(int size);
+queue_t *queue_new(int size) {
+    queue_t *q = malloc(sizeof(queue));
+    q->buffer = malloc(size * sizeof(void*));
+
+    return q;
+}
 
 /** @brief Delete your queue and free all of its memory.
  *
