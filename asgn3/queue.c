@@ -5,8 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <sys/types.h>
-#define BUF 2048
 
 /** @struct queue_t
  *
@@ -14,8 +14,11 @@
  *  should define the variables that you need for your queue.
  */
 typedef struct queue {
-    int len;
+    int len, count, in, out;
     void **buffer;
+
+    pthread_mutex_t mutex;
+    pthread_cond_t cv;
 
 } queue;
 
@@ -28,7 +31,15 @@ typedef struct queue {
  */
 queue_t *queue_new(int size) {
     queue_t *q = malloc(sizeof(queue));
-    
+
+
+    pthread_mutex_init(&q->mutex, NULL);
+    pthread_cond_init(&q->cv, NULL);
+   
+    q->count = 0;
+    q->in = 0;
+    q->out = 0;
+
     q->len = size;
     q->buffer = (void **) malloc(size * sizeof(void *));
   
@@ -45,9 +56,12 @@ queue_t *queue_new(int size) {
  */
 void queue_delete(queue_t **q) {
     if (q != NULL && *q != NULL) {
-	free(*q);    
+	free(*q);
 	*q = NULL;	
     }
+
+    pthread_mutex_destroy(&(*q)->mutex);
+    pthread_cond_destroy(&(*q)->cv);
 }
 
 /** @brief push an element onto a queue
@@ -59,7 +73,27 @@ void queue_delete(queue_t **q) {
  *  @return A bool indicating success or failure.  Note, the function
  *          should succeed unless the q parameter is NULL.
  */
-bool queue_push(queue_t *q, void *elem);
+bool queue_push(queue_t *q, void *elem) {
+    // if the queue is null or full
+    if (q == NULL || q->count >= q->len) {
+        return 1;
+    }
+
+    pthread_mutex_lock(&q->mutex);
+
+    while(q->count == q->len) {
+       pthread_cond_wait(&q->cv, &q->mutex); 
+    }
+
+    q->buffer[q->in] = elem;
+    q->in = (q->in + 1) % q->len;    
+
+    q->count ++;
+
+    pthread_mutex_unlock(&q->mutex);
+
+    return 0;
+}
 
 /** @brief pop an element from a queue.
  *
@@ -70,4 +104,17 @@ bool queue_push(queue_t *q, void *elem);
  *  @return A bool indicating success or failure.  Note, the function
  *          should succeed unless the q parameter is NULL.
  */
-bool queue_pop(queue_t *q, void **elem);
+bool queue_pop(queue_t *q, void **elem) {
+    // if the queue is null or empty
+    if (q == NULL || q->count == 0) {
+        return 1;
+    }
+     
+    pthread_mutex_lock(&q->mutex);
+
+    while (q->count == 0) {
+        
+    }
+
+    return 0;
+}
