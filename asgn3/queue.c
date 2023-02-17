@@ -113,8 +113,14 @@ bool queue_pop(queue_t *q, void **elem) {
     pthread_mutex_lock(&q->mutex);
 
     while (q->count == 0) {
-        
+        pthread_cond_wait(&q->cv, &q->mutex);
     }
+
+    *elem = q->buffer[q->out];
+
+    q->out = (q->out + 1) % q->len;
+    q->count -= 1;
+
 
     return 0;
 }
