@@ -61,7 +61,9 @@ void queue_delete(queue_t **q) {
 	*q = NULL;	
     }
 
-    //pthread_mutex_destroy(&(*q)->mutex);
+    // Old destroy statements were causing segfaults
+    
+    //pthread_mutex_destroy(&((*q)->mutex));
     //pthread_cond_destroy(&(*q)->cv);
     //pthread_cond_destroy(&(*q)->cv2);
 }
