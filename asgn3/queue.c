@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#include <assert.h>
+
 #include <pthread.h>
 #include <sys/types.h>
 
@@ -32,14 +35,17 @@ typedef struct queue {
 queue_t *queue_new(int size) {
     queue_t *q = malloc(sizeof(queue));
 
+    // making pthread mutex and conditional variables
     pthread_mutex_init(&q->mutex, NULL);
     pthread_cond_init(&q->cv, NULL);
     pthread_cond_init(&q->cv2, NULL);
 
+    // initialize the ints
     q->count = 0;
     q->in = 0;
     q->out = 0;
 
+    // make the array of void pointers
     q->len = size;
     q->buffer = (void **) malloc(size * sizeof(void *));
 
@@ -55,15 +61,23 @@ queue_t *queue_new(int size) {
  */
 void queue_delete(queue_t **q) {
     if (q != NULL && *q != NULL) {
+
+        // destroy pthread mutexes and conditional variables
+        int rc = 0;
+        rc = pthread_mutex_destroy(&(*q)->mutex);
+        assert(!rc);
+
+        rc = pthread_cond_destroy(&(*q)->cv);
+        assert(!rc);
+
+        rc = pthread_cond_destroy(&(*q)->cv2);
+        assert(!rc);
+
+        // free the queue pointer
+
         free(*q);
         *q = NULL;
     }
-
-    // Old destroy statements were causing segfaults
-
-    //pthread_mutex_destroy(&((*q)->mutex));
-    //pthread_cond_destroy(&(*q)->cv);
-    //pthread_cond_destroy(&(*q)->cv2);
 }
 
 /** @brief push an element onto a queue
