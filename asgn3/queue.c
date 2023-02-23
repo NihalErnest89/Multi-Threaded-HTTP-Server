@@ -32,18 +32,16 @@ typedef struct queue {
 queue_t *queue_new(int size) {
     queue_t *q = malloc(sizeof(queue));
 
-
     pthread_mutex_init(&q->mutex, NULL);
     pthread_cond_init(&q->cv, NULL);
     pthread_cond_init(&q->cv2, NULL);
-   
+
     q->count = 0;
     q->in = 0;
     q->out = 0;
 
     q->len = size;
     q->buffer = (void **) malloc(size * sizeof(void *));
-  
 
     return q;
 }
@@ -57,12 +55,12 @@ queue_t *queue_new(int size) {
  */
 void queue_delete(queue_t **q) {
     if (q != NULL && *q != NULL) {
-	free(*q);
-	*q = NULL;	
+        free(*q);
+        *q = NULL;
     }
 
     // Old destroy statements were causing segfaults
-    
+
     //pthread_mutex_destroy(&((*q)->mutex));
     //pthread_cond_destroy(&(*q)->cv);
     //pthread_cond_destroy(&(*q)->cv2);
@@ -85,18 +83,17 @@ bool queue_push(queue_t *q, void *elem) {
 
     pthread_mutex_lock(&q->mutex);
 
-    while(q->count == q->len) {
-       pthread_cond_wait(&q->cv, &q->mutex); 
+    while (q->count == q->len) {
+        pthread_cond_wait(&q->cv, &q->mutex);
     }
 
     q->buffer[q->in] = elem;
-    q->in = (q->in + 1) % q->len;    
+    q->in = (q->in + 1) % q->len;
 
-    q->count ++;
+    q->count++;
 
     pthread_cond_signal(&q->cv2);
     pthread_mutex_unlock(&q->mutex);
-
 
     return 1;
 }
@@ -115,7 +112,7 @@ bool queue_pop(queue_t *q, void **elem) {
     if (q == NULL || q->count == 0) {
         return 0;
     }
-     
+
     pthread_mutex_lock(&q->mutex);
 
     while (q->count == 0) {
