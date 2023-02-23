@@ -23,7 +23,7 @@ typedef struct queue {
     pthread_mutex_t mutex;
     pthread_cond_t cv, cv2;
 
-} queue_t;
+} queue;
 
 /** @brief Dynamically allocates and initializes a new queue with a
  *         maximum size, size
@@ -33,7 +33,7 @@ typedef struct queue {
  *  @return a pointer to a new queue_t
  */
 queue_t *queue_new(int size) {
-    queue_t *q = (queue_t *) malloc(sizeof(queue_t));
+    queue_t *q = (queue *) malloc(sizeof(queue));
 
     // making pthread mutex and conditional variables
     pthread_mutex_init(&q->mutex, NULL);
@@ -125,7 +125,7 @@ bool queue_push(queue_t *q, void *elem) {
  */
 bool queue_pop(queue_t *q, void **elem) {
     // if the queue is null or empty
-    if (q == NULL || q->count == 0) {
+    if (q == NULL) {
         return 0;
     }
 
