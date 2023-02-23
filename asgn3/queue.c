@@ -101,7 +101,7 @@ bool queue_push(queue_t *q, void *elem) {
         pthread_cond_wait(&q->cv, &q->mutex);
     }
 
-//    pthread_mutex_lock(&q->mutex);
+    //    pthread_mutex_lock(&q->mutex);
 
     q->buffer[q->in] = elem;
     q->in = (q->in + 1) % q->len;
@@ -131,12 +131,11 @@ bool queue_pop(queue_t *q, void **elem) {
 
     pthread_mutex_lock(&q->mutex);
 
-
     while (q->count == 0) {
         pthread_cond_wait(&q->cv2, &q->mutex);
     }
 
-//    pthread_mutex_lock(&q->mutex);
+    //    pthread_mutex_lock(&q->mutex);
 
     *elem = q->buffer[q->out];
 
