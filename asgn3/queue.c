@@ -74,7 +74,7 @@ void queue_delete(queue_t **q) {
         assert(!rc);
 
         // free the queue pointer
-
+        free((*q)->buffer);
         free(*q);
         *q = NULL;
     }
@@ -91,7 +91,7 @@ void queue_delete(queue_t **q) {
  */
 bool queue_push(queue_t *q, void *elem) {
     // if the queue is null or full
-    if (q == NULL || q->count >= q->len || elem == NULL) {
+    if (q == NULL || q->count >= q->len) {
         return 0;
     }
 
@@ -139,7 +139,6 @@ bool queue_pop(queue_t *q, void **elem) {
 
     q->out = (q->out + 1) % q->len;
     q->count -= 1;
-
 
     pthread_cond_signal(&q->cv);
     pthread_mutex_unlock(&q->mutex);
