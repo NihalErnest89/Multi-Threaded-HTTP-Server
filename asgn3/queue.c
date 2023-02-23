@@ -23,7 +23,7 @@ typedef struct queue {
     pthread_mutex_t mutex;
     pthread_cond_t cv, cv2;
 
-} queue;
+} queue_t;
 
 /** @brief Dynamically allocates and initializes a new queue with a
  *         maximum size, size
@@ -33,7 +33,7 @@ typedef struct queue {
  *  @return a pointer to a new queue_t
  */
 queue_t *queue_new(int size) {
-    queue_t *q = malloc(sizeof(queue));
+    queue_t *q = (queue_t *) malloc(sizeof(queue_t));
 
     // making pthread mutex and conditional variables
     pthread_mutex_init(&q->mutex, NULL);
@@ -91,15 +91,17 @@ void queue_delete(queue_t **q) {
  */
 bool queue_push(queue_t *q, void *elem) {
     // if the queue is null or full
-    if (q == NULL || q->count >= q->len) {
+    if (q == NULL || q->count >= q->len || elem == NULL) {
         return 0;
     }
 
-    pthread_mutex_lock(&q->mutex);
+    //    pthread_mutex_lock(&q->mutex);
 
     while (q->count == q->len) {
         pthread_cond_wait(&q->cv, &q->mutex);
     }
+
+    pthread_mutex_lock(&q->mutex);
 
     q->buffer[q->in] = elem;
     q->in = (q->in + 1) % q->len;
@@ -127,16 +129,17 @@ bool queue_pop(queue_t *q, void **elem) {
         return 0;
     }
 
-    pthread_mutex_lock(&q->mutex);
-
     while (q->count == 0) {
         pthread_cond_wait(&q->cv2, &q->mutex);
     }
+
+    pthread_mutex_lock(&q->mutex);
 
     *elem = q->buffer[q->out];
 
     q->out = (q->out + 1) % q->len;
     q->count -= 1;
+
 
     pthread_cond_signal(&q->cv);
     pthread_mutex_unlock(&q->mutex);
