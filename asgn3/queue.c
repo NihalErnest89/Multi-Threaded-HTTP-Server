@@ -91,7 +91,7 @@ void queue_delete(queue_t **q) {
  */
 bool queue_push(queue_t *q, void *elem) {
     // if the queue is null or full
-    if (q == NULL || q->count >= q->len) {
+    if (q == NULL) {
         return 0;
     }
 
