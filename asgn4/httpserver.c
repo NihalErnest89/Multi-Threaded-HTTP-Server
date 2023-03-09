@@ -35,6 +35,12 @@ int worker_threads();
 
 queue_t *q = NULL;
 
+//req, uri, status, rid
+
+void audit_log(char* req, char* uri, int status, char* id) {
+	fprintf(stderr, "%s,/%s,%d,%s", req, uri, status, id);
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         warnx("wrong arguments: %s port_num", argv[0]);
@@ -110,7 +116,7 @@ int worker_threads() {
 		fprintf(stderr, "after: %lu\n", rc);
 		handle_connection(rc);
 
-		fprintf(stderr, "handle connection works\n");
+//		fprintf(stderr, "handle connection works\n");
 		close(rc);
 	}
 
@@ -127,7 +133,7 @@ void handle_connection(int connfd) {
     if (res != NULL) {
         conn_send_response(conn, res);
     } else {
-        debug("%s", conn_str(conn));
+//        debug("%s", conn_str(conn));
         const Request_t *req = conn_get_request(conn);
         if (req == &REQUEST_GET) {
             handle_get(conn);
@@ -168,12 +174,15 @@ void handle_get(conn_t *conn) {
     // (hint: checkout the conn_send_file function!)
     char *uri = conn_get_uri(conn);
 
+	char *reqId = NULL;
+	reqId = conn_get_header(conn, "Request-Id");
+
     const Response_t *res = NULL;
-    debug("handling put request for %s", uri);
+  //  debug("handling put request for %s", uri);
  
      // Check if file already exists before opening it.
-    bool existed = access(uri, F_OK) == 0;
-    debug("%s existed? %d", uri, existed);
+//    bool existed = access(uri, F_OK) == 0;
+  //  debug("%s existed? %d", uri, existed);
 
     // Open the file..
 	int fd = open(uri, O_RDONLY, 0666);
@@ -181,6 +190,7 @@ void handle_get(conn_t *conn) {
 		if (errno == EACCES) {
 			res = &RESPONSE_FORBIDDEN;
 			conn_send_response(conn, res);
+			audit_log("GET", uri, 403, reqId);
 		}
 		else if (errno == ENOENT) {
 			res = &RESPONSE_NOT_FOUND;
@@ -207,6 +217,8 @@ void handle_get(conn_t *conn) {
 	}
 
 	conn_send_file(conn, fd, content_length);
+
+    audit_log("GET", uri, 200, reqId);
 
     close(fd);
 
