@@ -78,8 +78,7 @@ void handle_connection(int connfd) {
 
 void handle_get(conn_t *conn) {
 
-    char *uri = conn_get_uri(conn);
-    debug("GET request not implemented. But, we want to get %s", uri);
+    //debug("GET request not implemented. But, we want to get %s", uri);
 
     // What are the steps in here?
 
@@ -102,6 +101,7 @@ void handle_get(conn_t *conn) {
 
     // 4. Send the file
     // (hint: checkout the conn_send_file function!)
+    char *uri = conn_get_uri(conn);
 
     const Response_t *res = NULL;
     debug("handling put request for %s", uri);
@@ -111,9 +111,9 @@ void handle_get(conn_t *conn) {
     debug("%s existed? %d", uri, existed);
 
     // Open the file..
-	int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
-    int (fd < 0) {
-		if (errno == EACCES || errno == EISDIR) {
+	int fd = open(uri, O_RDONLY, 0666);
+    if (fd < 0) {
+		if (errno == EACCES) {
 			res = &RESPONSE_FORBIDDEN;
 			conn_send_response(conn, res);
 		}
@@ -122,11 +122,28 @@ void handle_get(conn_t *conn) {
 			conn_send_response(conn, res);
 		}
 		else {
-			res = &RESPONSE_INTERNAL_SERVER_ERROR
+			res = &RESPONSE_INTERNAL_SERVER_ERROR;
 		    conn_send_response(conn, res);
 		}
 
 	}
+
+	struct stat sb;
+	fstat(fd, &sb);
+
+	int content_length = sb.st_size;
+
+    
+	struct stat dir;
+	stat(uri, &dir);
+	
+	if (S_ISDIR(dir.st_mode)) {
+		conn_send_response(conn, &RESPONSE_FORBIDDEN);
+	}
+
+	conn_send_file(conn, fd, content_length);
+
+    close(fd);
 
 }
 
