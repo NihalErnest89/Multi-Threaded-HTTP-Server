@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	printf("Threads: %d\n", threads);
+//	printf("Threads: %d\n", threads);
 
     char *endptr = NULL;
     size_t port = (size_t) strtoull(argv[argc - 1], &endptr, 10);
@@ -75,53 +75,38 @@ int main(int argc, char **argv) {
 
 	for (int i = 0; i < threads; i ++) {
         pthread_create(&wt[i], NULL, (void *(*)(void*))worker_threads, NULL);
-	    printf("Thread %d created\n", i);
+//	    printf("Thread %d created\n", i);
 	}
 
     while (1) {
-		printf("donke\n");
+//		printf("donke\n");
         uintptr_t connfd = listener_accept(&sock);
-        printf("monke\n");
+  //      printf("monke\n");
 
 
-        fprintf(stderr, "a\n");
-		queue_push(q, (void *) connfd);
-		fprintf(stderr, "a\n");
+//        fprintf(stderr, "a\n");
+		if(!queue_push(q, (void *) connfd)) {
+            // print error message (internal server)
+			return EXIT_FAILURE;
+		}
+//		fprintf(stderr, "a\n");
 		fprintf(stderr, "before: %lu\n", connfd);
 
 
-    //    handle_connection(connfd);
-   //     close(connfd);
     }
 
     return EXIT_SUCCESS;
 }
 
 int worker_threads() {
-//     printf("Go to uglag\n");
-	 
-//	 void *c = NULL;
-
-//	void *c = NULL;
-//	queue_pop(q, c);
-
-//	 printf("lol ur queue_pop is busywaiting\n");
-//	 intptr_t connfd = (intptr_t)c;
-
-//	 printf("after: %ld", connfd);
-
     uintptr_t rc;
-    //void *cfd = NULL;
+	
 	while (1) {
         if (!queue_pop(q, (void **) &rc)) {
-			fprintf(stderr, "internal server error");
+            // Print error message (internal server)
 			return EXIT_FAILURE;
 		}
 
-       // int connfd = *(int *) cfd;
-	   // int connfd = 0;
-		fprintf(stderr, "tester\n");
-//		handle_connection(cfd);
 		fprintf(stderr, "after: %lu\n", rc);
 		handle_connection(rc);
 
