@@ -8,6 +8,7 @@
 #include "debug.h"
 #include "response.h"
 #include "request.h"
+#include "queue.h"
 
 #include <err.h>
 #include <errno.h>
@@ -30,10 +31,9 @@ void handle_get(conn_t *);
 void handle_put(conn_t *);
 void handle_unsupported(conn_t *);
 
-int worker_threads() {
-    printf("Go to uglag\n");
-	return 0;
-}
+int worker_threads();
+
+queue_t *q = NULL;
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -59,9 +59,9 @@ int main(int argc, char **argv) {
 	printf("Threads: %d\n", threads);
 
     char *endptr = NULL;
-    size_t port = (size_t) strtoull(argv[3], &endptr, 10);
+    size_t port = (size_t) strtoull(argv[argc - 1], &endptr, 10);
     if (endptr && *endptr != '\0') {
-        warnx("invalid port number: %s", argv[3]);
+        warnx("invalid port number: %s", argv[argc - 1]);
         return EXIT_FAILURE;
     }
 
@@ -71,20 +71,66 @@ int main(int argc, char **argv) {
 
     pthread_t wt[threads];
 	
+	q = queue_new(threads);
+
 	for (int i = 0; i < threads; i ++) {
         pthread_create(&wt[i], NULL, (void *(*)(void*))worker_threads, NULL);
 	    printf("Thread %d created\n", i);
 	}
 
     while (1) {
+		printf("donke\n");
         int connfd = listener_accept(&sock);
-        handle_connection(connfd);
-        close(connfd);
+        printf("monke\n");
+
+
+        fprintf(stderr, "a\n");
+		queue_push(q, (void *) 4);
+		fprintf(stderr, "a\n");
+		fprintf(stderr, "before: %d\n", connfd);
+
+
+    //    handle_connection(connfd);
+   //     close(connfd);
     }
 
     return EXIT_SUCCESS;
 }
 
+int worker_threads() {
+//     printf("Go to uglag\n");
+	 
+//	 void *c = NULL;
+
+//	void *c = NULL;
+//	queue_pop(q, c);
+
+//	 printf("lol ur queue_pop is busywaiting\n");
+//	 intptr_t connfd = (intptr_t)c;
+
+//	 printf("after: %ld", connfd);
+
+    uintptr_t rc;
+    //void *cfd = NULL;
+	while (1) {
+        if (!queue_pop(q, (void **) &rc)) {
+			fprintf(stderr, "internal server error");
+			return EXIT_FAILURE;
+		}
+
+       // int connfd = *(int *) cfd;
+	   // int connfd = 0;
+		fprintf(stderr, "tester\n");
+//		handle_connection(cfd);
+		fprintf(stderr, "after: %lu\n", rc);
+		handle_connection(rc);
+
+		fprintf(stderr, "handle connection works\n");
+		close(rc);
+	}
+
+     return 0;
+}
 
 
 void handle_connection(int connfd) {
