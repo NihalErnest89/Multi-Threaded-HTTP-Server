@@ -20,6 +20,8 @@
 
 #include <sys/stat.h>
 
+#define OPTIONS "t: "
+
 void handle_connection(int);
 
 void handle_get(conn_t *);
@@ -33,10 +35,26 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    int opt = 0;
+    int threads = 0;
+
+    while ((opt = getopt(argc, argv, OPTIONS)) != -1) {
+		switch(opt) {
+			case 't':
+			    threads = atoi(optarg);
+				break;
+			default:
+			    threads = 4;
+				break;
+		}
+	}
+
+	printf("Threads: %d\n", threads);
+
     char *endptr = NULL;
-    size_t port = (size_t) strtoull(argv[1], &endptr, 10);
+    size_t port = (size_t) strtoull(argv[3], &endptr, 10);
     if (endptr && *endptr != '\0') {
-        warnx("invalid port number: %s", argv[1]);
+        warnx("invalid port number: %s", argv[3]);
         return EXIT_FAILURE;
     }
 
