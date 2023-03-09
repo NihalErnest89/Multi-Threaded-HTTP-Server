@@ -80,14 +80,14 @@ int main(int argc, char **argv) {
 
     while (1) {
 		printf("donke\n");
-        int connfd = listener_accept(&sock);
+        uintptr_t connfd = listener_accept(&sock);
         printf("monke\n");
 
 
         fprintf(stderr, "a\n");
-		queue_push(q, (void *) 4);
+		queue_push(q, (void *) connfd);
 		fprintf(stderr, "a\n");
-		fprintf(stderr, "before: %d\n", connfd);
+		fprintf(stderr, "before: %lu\n", connfd);
 
 
     //    handle_connection(connfd);
