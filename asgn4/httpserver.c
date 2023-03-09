@@ -20,6 +20,8 @@
 
 #include <sys/stat.h>
 
+#include <pthread.h>
+
 #define OPTIONS "t: "
 
 void handle_connection(int);
@@ -27,6 +29,11 @@ void handle_connection(int);
 void handle_get(conn_t *);
 void handle_put(conn_t *);
 void handle_unsupported(conn_t *);
+
+int worker_threads() {
+    printf("Go to uglag\n");
+	return 0;
+}
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -62,6 +69,13 @@ int main(int argc, char **argv) {
     Listener_Socket sock;
     listener_init(&sock, port);
 
+    pthread_t wt[threads];
+	
+	for (int i = 0; i < threads; i ++) {
+        pthread_create(&wt[i], NULL, (void *(*)(void*))worker_threads, NULL);
+	    printf("Thread %d created\n", i);
+	}
+
     while (1) {
         int connfd = listener_accept(&sock);
         handle_connection(connfd);
@@ -70,6 +84,8 @@ int main(int argc, char **argv) {
 
     return EXIT_SUCCESS;
 }
+
+
 
 void handle_connection(int connfd) {
 
