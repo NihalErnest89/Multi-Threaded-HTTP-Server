@@ -37,8 +37,8 @@ queue_t *q = NULL;
 
 //req, uri, status, rid
 
-void audit_log(char* req, char* uri, int status, char* id) {
-	fprintf(stderr, "%s,/%s,%d,%s\n", req, uri, status, id);
+void audit_log(char *req, char *uri, int status, char *id) {
+    fprintf(stderr, "%s,/%s,%d,%s\n", req, uri, status, id);
 }
 
 int main(int argc, char **argv) {
@@ -52,17 +52,13 @@ int main(int argc, char **argv) {
     int threads = 0;
 
     while ((opt = getopt(argc, argv, OPTIONS)) != -1) {
-		switch(opt) {
-			case 't':
-			    threads = atoi(optarg);
-				break;
-			default:
-			    threads = 4;
-				break;
-		}
-	}
+        switch (opt) {
+        case 't': threads = atoi(optarg); break;
+        default: threads = 4; break;
+        }
+    }
 
-//	printf("Threads: %d\n", threads);
+    //	printf("Threads: %d\n", threads);
 
     char *endptr = NULL;
     size_t port = (size_t) strtoull(argv[argc - 1], &endptr, 10);
@@ -76,29 +72,26 @@ int main(int argc, char **argv) {
     listener_init(&sock, port);
 
     pthread_t wt[threads];
-	
-	q = queue_new(threads);
 
-	for (int i = 0; i < threads; i ++) {
-        pthread_create(&wt[i], NULL, (void *(*)(void*))worker_threads, NULL);
-//	    printf("Thread %d created\n", i);
-	}
+    q = queue_new(threads);
+
+    for (int i = 0; i < threads; i++) {
+        pthread_create(&wt[i], NULL, (void *(*) (void *) ) worker_threads, NULL);
+        //	    printf("Thread %d created\n", i);
+    }
 
     while (1) {
-//		printf("donke\n");
+        //		printf("donke\n");
         uintptr_t connfd = listener_accept(&sock);
-  //      printf("monke\n");
+        //      printf("monke\n");
 
-
-//        fprintf(stderr, "a\n");
-		if(!queue_push(q, (void *) connfd)) {
+        //        fprintf(stderr, "a\n");
+        if (!queue_push(q, (void *) connfd)) {
             // print error message (internal server)
-			return EXIT_FAILURE;
-		}
-//		fprintf(stderr, "a\n");
-//		fprintf(stderr, "before: %lu\n", connfd);
-
-
+            return EXIT_FAILURE;
+        }
+        //		fprintf(stderr, "a\n");
+        //		fprintf(stderr, "before: %lu\n", connfd);
     }
 
     return EXIT_SUCCESS;
@@ -106,23 +99,22 @@ int main(int argc, char **argv) {
 
 int worker_threads() {
     uintptr_t rc;
-	
-	while (1) {
+
+    while (1) {
         if (!queue_pop(q, (void **) &rc)) {
             // Print error message (internal server)
-			return EXIT_FAILURE;
-		}
+            return EXIT_FAILURE;
+        }
 
-//		fprintf(stderr, "after: %lu\n", rc);
-		handle_connection(rc);
+        //		fprintf(stderr, "after: %lu\n", rc);
+        handle_connection(rc);
 
-//		fprintf(stderr, "handle connection works\n");
-		close(rc);
-	}
+        //		fprintf(stderr, "handle connection works\n");
+        close(rc);
+    }
 
-     return 0;
+    return 0;
 }
-
 
 void handle_connection(int connfd) {
 
@@ -133,7 +125,7 @@ void handle_connection(int connfd) {
     if (res != NULL) {
         conn_send_response(conn, res);
     } else {
-//        debug("%s", conn_str(conn));
+        //        debug("%s", conn_str(conn));
         const Request_t *req = conn_get_request(conn);
         if (req == &REQUEST_GET) {
             handle_get(conn);
@@ -169,67 +161,61 @@ void handle_get(conn_t *conn) {
     // open, but are not valid.
     // (hint: checkout the macro "S_IFDIR", which you can use after you call fstat!)
 
-
     // 4. Send the file
     // (hint: checkout the conn_send_file function!)
     char *uri = conn_get_uri(conn);
 
-	char *reqId = NULL;
-	reqId = conn_get_header(conn, "Request-Id");
+    char *reqId = NULL;
+    reqId = conn_get_header(conn, "Request-Id");
 
     const Response_t *res = NULL;
-  //  debug("handling put request for %s", uri);
- 
-     // Check if file already exists before opening it.
-//    bool existed = access(uri, F_OK) == 0;
-  //  debug("%s existed? %d", uri, existed);
+    //  debug("handling put request for %s", uri);
+
+    // Check if file already exists before opening it.
+    //    bool existed = access(uri, F_OK) == 0;
+    //  debug("%s existed? %d", uri, existed);
 
     // Open the file..
-	int fd = open(uri, O_RDONLY, 0666);
+    int fd = open(uri, O_RDONLY, 0666);
     if (fd < 0) {
-		if (errno == EACCES) {
-			res = &RESPONSE_FORBIDDEN;
-			conn_send_response(conn, res);
-			audit_log("GET", uri, 403, reqId);
-		}
-		else if (errno == ENOENT) {
-			res = &RESPONSE_NOT_FOUND;
-			conn_send_response(conn, res);
-			audit_log("GET", uri, 404, reqId);
-		}
-		else {
-			res = &RESPONSE_INTERNAL_SERVER_ERROR;
-		    conn_send_response(conn, res);
-			audit_log("GET", uri, 500, reqId);
-		}
-        
-		close(fd);
-		return;
+        if (errno == EACCES) {
+            res = &RESPONSE_FORBIDDEN;
+            conn_send_response(conn, res);
+            audit_log("GET", uri, 403, reqId);
+        } else if (errno == ENOENT) {
+            res = &RESPONSE_NOT_FOUND;
+            conn_send_response(conn, res);
+            audit_log("GET", uri, 404, reqId);
+        } else {
+            res = &RESPONSE_INTERNAL_SERVER_ERROR;
+            conn_send_response(conn, res);
+            audit_log("GET", uri, 500, reqId);
+        }
 
-	}
+        close(fd);
+        return;
+    }
 
-	struct stat sb;
-	fstat(fd, &sb);
+    struct stat sb;
+    fstat(fd, &sb);
 
-	int content_length = sb.st_size;
+    int content_length = sb.st_size;
 
-    
-	struct stat dir;
-	stat(uri, &dir);
-	
-	if (S_ISDIR(dir.st_mode)) {
-		conn_send_response(conn, &RESPONSE_FORBIDDEN);
-		audit_log("GET", uri, 403, reqId);
-		close(fd);
-		return;
-	}
+    struct stat dir;
+    stat(uri, &dir);
 
-	conn_send_file(conn, fd, content_length);
+    if (S_ISDIR(dir.st_mode)) {
+        conn_send_response(conn, &RESPONSE_FORBIDDEN);
+        audit_log("GET", uri, 403, reqId);
+        close(fd);
+        return;
+    }
+
+    conn_send_file(conn, fd, content_length);
 
     audit_log("GET", uri, 200, reqId);
 
     close(fd);
-
 }
 
 void handle_unsupported(conn_t *conn) {
@@ -246,7 +232,7 @@ void handle_put(conn_t *conn) {
     //debug("handling put request for %s", uri);
 
     char *reqId = NULL;
-	reqId = conn_get_header(conn, "Request-Id");
+    reqId = conn_get_header(conn, "Request-Id");
 
     // Check if file already exists before opening it.
     bool existed = access(uri, F_OK) == 0;
@@ -258,51 +244,43 @@ void handle_put(conn_t *conn) {
     int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
     if (fd < 0) {
         //debug("%s: %d", uri, errno);
-        if (errno == EACCES) {
+        if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
             res = &RESPONSE_FORBIDDEN;
-			status = 403;
+            status = 403;
             goto out;
-        }
-        if (errno == ENOENT) {
-			res = &RESPONSE_NOT_FOUND;
-			status = 404;
-			goto out;
-
         } else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
             status = 500;
-			goto out;
+            goto out;
         }
     }
 
     // TODO: check dir
 
-	struct stat dir;
-	stat(uri, &dir);
+    struct stat dir;
+    stat(uri, &dir);
 
     if (S_ISDIR(dir.st_mode)) {
         conn_send_response(conn, &RESPONSE_FORBIDDEN);
-		status = 403;
-		goto out;
+        status = 403;
+        goto out;
     }
-
 
     res = conn_recv_file(conn, fd);
 
     if (res == NULL && existed) {
         res = &RESPONSE_OK;
-		status = 200;
-		goto out;
+        status = 200;
+        goto out;
     } else if (res == NULL && !existed) {
         res = &RESPONSE_CREATED;
-		status = 201;
-		goto out;
+        status = 201;
+        goto out;
     }
-
 
 out:
     audit_log("PUT", uri, status, reqId);
 
     conn_send_response(conn, res);
-	close(fd);
+    close(fd);
 }
