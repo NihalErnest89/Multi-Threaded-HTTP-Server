@@ -38,7 +38,7 @@ queue_t *q = NULL;
 //req, uri, status, rid
 
 void audit_log(char* req, char* uri, int status, char* id) {
-	fprintf(stderr, "%s,/%s,%d,%s", req, uri, status, id);
+	fprintf(stderr, "%s,/%s,%d,%s\n", req, uri, status, id);
 }
 
 int main(int argc, char **argv) {
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 //		fprintf(stderr, "a\n");
-		fprintf(stderr, "before: %lu\n", connfd);
+//		fprintf(stderr, "before: %lu\n", connfd);
 
 
     }
@@ -113,7 +113,7 @@ int worker_threads() {
 			return EXIT_FAILURE;
 		}
 
-		fprintf(stderr, "after: %lu\n", rc);
+//		fprintf(stderr, "after: %lu\n", rc);
 		handle_connection(rc);
 
 //		fprintf(stderr, "handle connection works\n");
@@ -195,10 +195,12 @@ void handle_get(conn_t *conn) {
 		else if (errno == ENOENT) {
 			res = &RESPONSE_NOT_FOUND;
 			conn_send_response(conn, res);
+			audit_log("GET", uri, 404, reqId);
 		}
 		else {
 			res = &RESPONSE_INTERNAL_SERVER_ERROR;
 		    conn_send_response(conn, res);
+			audit_log("GET", uri, 500, reqId);
 		}
 
 	}
@@ -235,35 +237,64 @@ void handle_put(conn_t *conn) {
 
     char *uri = conn_get_uri(conn);
     const Response_t *res = NULL;
-    debug("handling put request for %s", uri);
+    //debug("handling put request for %s", uri);
+
+    char *reqId = NULL;
+	reqId = conn_get_header(conn, "Request-Id");
 
     // Check if file already exists before opening it.
     bool existed = access(uri, F_OK) == 0;
-    debug("%s existed? %d", uri, existed);
+    //debug("%s existed? %d", uri, existed);
+
+    int status = 0;
 
     // Open the file..
     int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
     if (fd < 0) {
-        debug("%s: %d", uri, errno);
-        if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
+        //debug("%s: %d", uri, errno);
+        if (errno == EACCES) {
             res = &RESPONSE_FORBIDDEN;
-            goto out;
-        } else {
-            res = &RESPONSE_INTERNAL_SERVER_ERROR;
+			status = 403;
             goto out;
         }
+        if (errno == ENOENT) {
+			res = &RESPONSE_NOT_FOUND;
+			status = 404;
+			goto out;
+
+        } else {
+            res = &RESPONSE_INTERNAL_SERVER_ERROR;
+            status = 500;
+			goto out;
+        }
     }
+
+    // TODO: check dir
+
+	struct stat dir;
+	stat(uri, &dir);
+
+    if (S_ISDIR(dir.st_mode)) {
+        conn_send_response(conn, &RESPONSE_FORBIDDEN);
+		status = 403;
+		goto out;
+    }
+
 
     res = conn_recv_file(conn, fd);
 
     if (res == NULL && existed) {
         res = &RESPONSE_OK;
+		status = 200;
     } else if (res == NULL && !existed) {
         res = &RESPONSE_CREATED;
+		status = 201;
     }
 
     close(fd);
 
 out:
+    audit_log("PUT", uri, status, reqId);
+
     conn_send_response(conn, res);
 }
