@@ -202,6 +202,9 @@ void handle_get(conn_t *conn) {
 		    conn_send_response(conn, res);
 			audit_log("GET", uri, 500, reqId);
 		}
+        
+		close(fd);
+		return;
 
 	}
 
@@ -216,6 +219,9 @@ void handle_get(conn_t *conn) {
 	
 	if (S_ISDIR(dir.st_mode)) {
 		conn_send_response(conn, &RESPONSE_FORBIDDEN);
+		audit_log("GET", uri, 403, reqId);
+		close(fd);
+		return;
 	}
 
 	conn_send_file(conn, fd, content_length);
@@ -286,15 +292,17 @@ void handle_put(conn_t *conn) {
     if (res == NULL && existed) {
         res = &RESPONSE_OK;
 		status = 200;
+		goto out;
     } else if (res == NULL && !existed) {
         res = &RESPONSE_CREATED;
 		status = 201;
+		goto out;
     }
 
-    close(fd);
 
 out:
     audit_log("PUT", uri, status, reqId);
 
     conn_send_response(conn, res);
+	close(fd);
 }
