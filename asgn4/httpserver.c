@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include <sys/stat.h>
+#include <sys/file.h>
 
 #include <pthread.h>
 
@@ -34,6 +35,11 @@ void handle_unsupported(conn_t *);
 int worker_threads();
 
 queue_t *q = NULL;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+//pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+
 
 //req, uri, status, rid
 
@@ -196,11 +202,6 @@ void handle_get(conn_t *conn) {
         return;
     }
 
-    struct stat sb;
-    fstat(fd, &sb);
-
-    int content_length = sb.st_size;
-
     struct stat dir;
     stat(uri, &dir);
 
@@ -209,11 +210,20 @@ void handle_get(conn_t *conn) {
         audit_log("GET", uri, 403, reqId);
         close(fd);
         return;
-    }
+    }   
+
+    flock(fd, LOCK_SH);
+
+    struct stat sb;
+    fstat(fd, &sb);
+
+    int content_length = sb.st_size;
 
     conn_send_file(conn, fd, content_length);
 
     audit_log("GET", uri, 200, reqId);
+
+	flock(fd, LOCK_UN);
 
     close(fd);
 }
@@ -227,6 +237,7 @@ void handle_unsupported(conn_t *conn) {
 
 void handle_put(conn_t *conn) {
 
+
     char *uri = conn_get_uri(conn);
     const Response_t *res = NULL;
     //debug("handling put request for %s", uri);
@@ -235,13 +246,22 @@ void handle_put(conn_t *conn) {
     reqId = conn_get_header(conn, "Request-Id");
 
     // Check if file already exists before opening it.
-    bool existed = access(uri, F_OK) == 0;
+    //bool existed = access(uri, F_OK) == 0;
     //debug("%s existed? %d", uri, existed);
+    
+    pthread_mutex_lock(&mutex);
+    bool existed = access(uri, F_OK) == 0;
+//    int turn = 0;
 
-    int status = 0;
+
+
 
     // Open the file..
     int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+    
+	pthread_mutex_unlock(&mutex);
+
+	int status = 0;
     if (fd < 0) {
         //debug("%s: %d", uri, errno);
         if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
@@ -255,6 +275,8 @@ void handle_put(conn_t *conn) {
         }
     }
 
+    
+
     // TODO: check dir
 
     struct stat dir;
@@ -266,7 +288,10 @@ void handle_put(conn_t *conn) {
         goto out;
     }
 
+    flock(fd, LOCK_EX);
+
     res = conn_recv_file(conn, fd);
+
 
     if (res == NULL && existed) {
         res = &RESPONSE_OK;
@@ -277,6 +302,8 @@ void handle_put(conn_t *conn) {
         status = 201;
         goto out;
     }
+
+	flock(fd, LOCK_UN);
 
 out:
     audit_log("PUT", uri, status, reqId);
