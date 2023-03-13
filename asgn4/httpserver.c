@@ -38,7 +38,6 @@ queue_t *q = NULL;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-//pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 
 
 //req, uri, status, rid
@@ -99,6 +98,8 @@ int main(int argc, char **argv) {
         //		fprintf(stderr, "a\n");
         //		fprintf(stderr, "before: %lu\n", connfd);
     }
+
+    pthread_mutex_destroy(&mutex);
 
     return EXIT_SUCCESS;
 }
