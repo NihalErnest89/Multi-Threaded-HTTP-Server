@@ -40,8 +40,6 @@ queue_t *q = NULL;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
-
 //req, uri, status, rid
 
 void audit_log(char *req, char *uri, int status, char *id) {
@@ -186,12 +184,10 @@ void handle_get(conn_t *conn) {
 
     // Open the file..
 
-	pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex);
     int fd = open(uri, O_RDONLY, 0666);
- 
 
-    
-	pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 
     if (fd < 0) {
         if (errno == EACCES) {
@@ -212,7 +208,6 @@ void handle_get(conn_t *conn) {
         return;
     }
 
-
     struct stat dir;
     stat(uri, &dir);
 
@@ -221,7 +216,7 @@ void handle_get(conn_t *conn) {
         audit_log("GET", uri, 403, reqId);
         close(fd);
         return;
-    }   
+    }
 
     flock(fd, LOCK_SH);
 
@@ -230,12 +225,11 @@ void handle_get(conn_t *conn) {
 
     int content_length = sb.st_size;
 
-
     conn_send_file(conn, fd, content_length);
 
     audit_log("GET", uri, 200, reqId);
 
-//	flock(fd, LOCK_UN);
+    //	flock(fd, LOCK_UN);
 
     close(fd);
 }
@@ -259,38 +253,36 @@ void handle_put(conn_t *conn) {
     // Check if file already exists before opening it.
     //bool existed = access(uri, F_OK) == 0;
     //debug("%s existed? %d", uri, existed);
-    
+
     pthread_mutex_lock(&mutex);
     bool existed = access(uri, F_OK) == 0;
-//    int turn = 0;
-
+    //    int turn = 0;
 
     // Open the file..
     int fd = open(uri, O_CREAT | O_WRONLY, 0600);
 
     flock(fd, LOCK_EX);
-	ftruncate(fd, 1);
+    ftruncate(fd, 1);
 
-	pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 
-
-	int status = 0;
+    int status = 0;
     if (fd < 0) {
         //debug("%s: %d", uri, errno);
         if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
             res = &RESPONSE_FORBIDDEN;
             status = 403;
-     //       goto out;
+            //       goto out;
         } else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
             status = 500;
-   //         goto out;
+            //         goto out;
         }
 
-		goto out;
+        goto out;
     }
 
-//    ftruncate(fd, 1); // this one works well
+    //    ftruncate(fd, 1); // this one works well
 
     // TODO: check dir
 
@@ -303,10 +295,9 @@ void handle_put(conn_t *conn) {
         goto out;
     }
 
-  //  flock(fd, LOCK_EX);
+    //  flock(fd, LOCK_EX);
 
     res = conn_recv_file(conn, fd);
-
 
     if (res == NULL && existed) {
         res = &RESPONSE_OK;
@@ -318,7 +309,7 @@ void handle_put(conn_t *conn) {
         goto out;
     }
 
-//	flock(fd, LOCK_UN);
+    //	flock(fd, LOCK_UN);
 
 out:
     audit_log("PUT", uri, status, reqId);
