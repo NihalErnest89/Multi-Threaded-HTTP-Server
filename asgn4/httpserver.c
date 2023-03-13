@@ -3,6 +3,8 @@
 //     Andrew Quinn
 //     Brian Zhao
 
+// Assignment completed by Nihal Ernest
+
 #include "asgn2_helper_funcs.h"
 #include "connection.h"
 #include "debug.h"
