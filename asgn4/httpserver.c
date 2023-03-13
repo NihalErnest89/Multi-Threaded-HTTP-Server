@@ -278,12 +278,14 @@ void handle_put(conn_t *conn) {
         if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
             res = &RESPONSE_FORBIDDEN;
             status = 403;
-            goto out;
+     //       goto out;
         } else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
             status = 500;
-            goto out;
+   //         goto out;
         }
+
+		goto out;
     }
 
 //    ftruncate(fd, 1); // this one works well
