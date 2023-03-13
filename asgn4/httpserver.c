@@ -182,7 +182,14 @@ void handle_get(conn_t *conn) {
     //  debug("%s existed? %d", uri, existed);
 
     // Open the file..
+
+	pthread_mutex_lock(&mutex);
     int fd = open(uri, O_RDONLY, 0666);
+ 
+
+    
+	pthread_mutex_unlock(&mutex);
+
     if (fd < 0) {
         if (errno == EACCES) {
             res = &RESPONSE_FORBIDDEN;
@@ -202,6 +209,7 @@ void handle_get(conn_t *conn) {
         return;
     }
 
+
     struct stat dir;
     stat(uri, &dir);
 
@@ -219,11 +227,12 @@ void handle_get(conn_t *conn) {
 
     int content_length = sb.st_size;
 
+
     conn_send_file(conn, fd, content_length);
 
     audit_log("GET", uri, 200, reqId);
 
-	flock(fd, LOCK_UN);
+//	flock(fd, LOCK_UN);
 
     close(fd);
 }
@@ -236,7 +245,6 @@ void handle_unsupported(conn_t *conn) {
 }
 
 void handle_put(conn_t *conn) {
-
 
     char *uri = conn_get_uri(conn);
     const Response_t *res = NULL;
@@ -257,9 +265,13 @@ void handle_put(conn_t *conn) {
 
 
     // Open the file..
-    int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
-    
+    int fd = open(uri, O_CREAT | O_WRONLY, 0600);
+
+    flock(fd, LOCK_EX);
+	ftruncate(fd, 1);
+
 	pthread_mutex_unlock(&mutex);
+
 
 	int status = 0;
     if (fd < 0) {
@@ -275,7 +287,7 @@ void handle_put(conn_t *conn) {
         }
     }
 
-    
+//    ftruncate(fd, 1); // this one works well
 
     // TODO: check dir
 
@@ -288,7 +300,7 @@ void handle_put(conn_t *conn) {
         goto out;
     }
 
-    flock(fd, LOCK_EX);
+  //  flock(fd, LOCK_EX);
 
     res = conn_recv_file(conn, fd);
 
@@ -303,7 +315,7 @@ void handle_put(conn_t *conn) {
         goto out;
     }
 
-	flock(fd, LOCK_UN);
+//	flock(fd, LOCK_UN);
 
 out:
     audit_log("PUT", uri, status, reqId);
