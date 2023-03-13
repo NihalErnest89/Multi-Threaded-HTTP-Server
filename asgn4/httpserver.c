@@ -262,8 +262,6 @@ void handle_put(conn_t *conn) {
 //    int turn = 0;
 
 
-
-
     // Open the file..
     int fd = open(uri, O_CREAT | O_WRONLY, 0600);
 
