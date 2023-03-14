@@ -40,8 +40,10 @@ queue_t *q = NULL;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-//req, uri, status, rid
+/* audit log function prints the log to stderr
+   format: req, uri, status, rid
 
+*/
 void audit_log(char *req, char *uri, int status, char *id) {
     fprintf(stderr, "%s,/%s,%d,%s\n", req, uri, status, id); //Printing the audit log out to console
 }
@@ -56,7 +58,7 @@ int main(int argc, char **argv) {
     int opt = 0;
     int threads = 0;
 
-    while ((opt = getopt(argc, argv, OPTIONS)) != -1) {
+    while ((opt = getopt(argc, argv, OPTIONS)) != -1) { // checks for the -t flag
         switch (opt) {
         case 't': threads = atoi(optarg); break;
         default: threads = 4; break;
@@ -80,7 +82,7 @@ int main(int argc, char **argv) {
 
     q = queue_new(threads);
 
-    for (int i = 0; i < threads; i++) {
+    for (int i = 0; i < threads; i++) { //creates all the worker threads
         pthread_create(&wt[i], NULL, (void *(*) (void *) ) worker_threads, NULL);
         //	    printf("Thread %d created\n", i);
     }
@@ -90,13 +92,9 @@ int main(int argc, char **argv) {
         uintptr_t connfd = listener_accept(&sock);
         //      printf("monke\n");
 
-        //        fprintf(stderr, "a\n");
-        if (!queue_push(q, (void *) connfd)) {
-            // print error message (internal server)
+        if (!queue_push(q, (void *) connfd)) { // pushes the connection to the queue
             return EXIT_FAILURE;
         }
-        //		fprintf(stderr, "a\n");
-        //		fprintf(stderr, "before: %lu\n", connfd);
     }
 
     pthread_mutex_destroy(&mutex);
@@ -104,6 +102,9 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+/*
+worker threads pop connections from the queue and handle them
+*/
 int worker_threads() {
     uintptr_t rc;
 
@@ -172,6 +173,7 @@ void handle_get(conn_t *conn) {
     // (hint: checkout the conn_send_file function!)
     char *uri = conn_get_uri(conn);
 
+    // Needed for the audit log
     char *reqId = NULL;
     reqId = conn_get_header(conn, "Request-Id");
 
@@ -232,6 +234,8 @@ void handle_get(conn_t *conn) {
 
     //	flock(fd, LOCK_UN);
 
+    // heard that flock(unlock) is not needed if u have close(fd) right after
+
     close(fd);
 }
 
@@ -263,6 +267,8 @@ void handle_put(conn_t *conn) {
     int fd = open(uri, O_CREAT | O_WRONLY, 0600);
 
     flock(fd, LOCK_EX);
+
+    // Using this instead of O_TRUNC helped pass more cases in stress_mix
     ftruncate(fd, 1);
 
     //    pthread_mutex_unlock(&mutex);
@@ -279,7 +285,7 @@ void handle_put(conn_t *conn) {
             status = 500;
             //         goto out;
         }
-
+        pthread_mutex_unlock(&mutex);
         goto out;
     }
 
@@ -291,6 +297,7 @@ void handle_put(conn_t *conn) {
 
     res = conn_recv_file(conn, fd);
 
+    // check to see if the file existed
     if (res == NULL && existed) {
         res = &RESPONSE_OK;
         status = 200;
