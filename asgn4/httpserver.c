@@ -43,11 +43,11 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 //req, uri, status, rid
 
 void audit_log(char *req, char *uri, int status, char *id) {
-    fprintf(stderr, "%s,/%s,%d,%s\n", req, uri, status, id);
+    fprintf(stderr, "%s,/%s,%d,%s\n", req, uri, status, id); //Printing the audit log out to console
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
+    if (argc < 2) {  // cant be missing that many args
         warnx("wrong arguments: %s port_num", argv[0]);
         fprintf(stderr, "usage: %s <port>\n", argv[0]);
         return EXIT_FAILURE;
@@ -187,7 +187,6 @@ void handle_get(conn_t *conn) {
     pthread_mutex_lock(&mutex);
     int fd = open(uri, O_RDONLY, 0666);
 
-    pthread_mutex_unlock(&mutex);
 
     if (fd < 0) {
         if (errno == EACCES) {
@@ -204,6 +203,7 @@ void handle_get(conn_t *conn) {
             audit_log("GET", uri, 500, reqId);
         }
 
+        pthread_mutex_unlock(&mutex);
         close(fd);
         return;
     }
@@ -214,10 +214,12 @@ void handle_get(conn_t *conn) {
     if (S_ISDIR(dir.st_mode)) {
         conn_send_response(conn, &RESPONSE_FORBIDDEN);
         audit_log("GET", uri, 403, reqId);
+		pthread_mutex_unlock(&mutex);
         close(fd);
         return;
     }
 
+    pthread_mutex_unlock(&mutex);
     flock(fd, LOCK_SH);
 
     struct stat sb;
@@ -264,7 +266,7 @@ void handle_put(conn_t *conn) {
     flock(fd, LOCK_EX);
     ftruncate(fd, 1);
 
-    pthread_mutex_unlock(&mutex);
+//    pthread_mutex_unlock(&mutex);
 
     int status = 0;
     if (fd < 0) {
@@ -282,18 +284,9 @@ void handle_put(conn_t *conn) {
         goto out;
     }
 
-    //    ftruncate(fd, 1); // this one works well
+    pthread_mutex_unlock(&mutex);
 
-    // TODO: check dir
-
-    struct stat dir;
-    stat(uri, &dir);
-
-    if (S_ISDIR(dir.st_mode)) {
-        conn_send_response(conn, &RESPONSE_FORBIDDEN);
-        status = 403;
-        goto out;
-    }
+//    ftruncate(fd, 1); // this one works well
 
     //  flock(fd, LOCK_EX);
 
